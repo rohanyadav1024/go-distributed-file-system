@@ -1,5 +1,7 @@
 package errors
 
+// This file defines the error codes used throughout the application. These codes can be used to categorize errors and make it easier to handle them appropriately in different contexts.
+
 type Code string
 
 const (

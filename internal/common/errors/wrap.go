@@ -1,5 +1,7 @@
 package errors
 
+// This file defines the custom error type and helper functions for creating and wrapping errors.
+
 // New creates a new Error with the given code and message.
 func New(code Code, message string) *Error {
 	return &Error{

@@ -1,5 +1,7 @@
 package errors
 
+// This file defines the custom error type and helper functions for creating and wrapping errors.
+
 type Error struct {
 	Code   	Code
 	Message string
