@@ -25,3 +25,12 @@ func (e *Error) Retryable() bool {
 	// Todo: This is a simple heuristic. In a real implementation, you might want to be more specific about which codes are retryable. Add a configuration or mapping if needed.
 	return e.Code == CodeUnavailable || e.Code == CodeTimeout || e.Code == CodeConflict
 }
+
+// Is method to compare errors based on their code, allowing for sentinel error checks
+func (e *Error) Is(target error) bool {
+    t, ok := target.(*Error)
+    if !ok {
+        return false
+    }
+    return e.Code == t.Code
+}

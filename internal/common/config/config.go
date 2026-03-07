@@ -19,6 +19,11 @@ type Config struct {
 	ReplicationFactor      int
 	FailureTimeoutSeconds  int
 	MonitorIntervalSeconds int
+
+	// Storage
+	StorageDataPath   string
+	StorageListenAddr string
+	StorageNodeID     string
 }
 
 func Load() Config {
@@ -36,6 +41,9 @@ func Load() Config {
 		ReplicationFactor:      parseInt(getEnv("DFS_REPLICATION_FACTOR", "2")),
 		FailureTimeoutSeconds:  parseInt(getEnv("DFS_FAILURE_TIMEOUT_SECONDS", "10")),
 		MonitorIntervalSeconds: parseInt(getEnv("DFS_MONITOR_INTERVAL_SECONDS", "3")),
+		StorageDataPath:        getEnv("DFS_STORAGE_DATA_PATH", "./data/storaged"),
+		StorageListenAddr:      getEnv("DFS_STORAGE_LISTEN_ADDR", ":50052"),
+		StorageNodeID:          getEnv("DFS_STORAGE_NODE_ID", "storage-1"),
 	}
 
 	return cfg

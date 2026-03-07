@@ -10,6 +10,13 @@ func New(code Code, message string) *Error {
 	}
 }
 
+// sentinel errors for common cases
+var (
+    ErrNotFound        = &Error{Code: CodeNotFound}
+    ErrInvalidArgument = &Error{Code: CodeInvalidArgument}
+    ErrAlreadyExists   = &Error{Code: CodeAlreadyExists}
+)
+
 // Wrap creates a new Error that wraps an existing error with additional context.
 func Wrap(code Code, message string, cause error) *Error {
 	return &Error{
