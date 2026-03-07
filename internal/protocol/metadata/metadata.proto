@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package metadata;
+
+option go_package = "github.com/rohanyadav1024/dfs/internal/protocol/metadata;metadatapb";
+
+// ----------------------------
+// Messages
+// ----------------------------
+
+message PrepareUploadRequest {
+  string file_name = 1;
+  int64 file_size_bytes = 2;
+}
+
+message PrepareUploadResponse {
+  string upload_session_id = 1;
+  string file_id = 2;
+  repeated ChunkPlan chunks = 3;
+}
+
+message CommitUploadRequest {
+  string session_id = 1;
+  map<string, ReplicaList> replica_map = 2;
+}
+
+message ReplicaList {
+  repeated string node_ids = 1;
+}
+
+message CommitUploadResponse {
+}
+
+message GetFileRequest {
+  string file_id = 1;
+}
+
+message GetFileResponse {
+  string file_id = 1;
+  string file_name = 2;
+  int64 file_size_bytes = 3;
+  repeated ChunkPlan chunks = 4;
+}
+
+message DeleteFileRequest {
+  string file_id = 1;
+}
+
+message DeleteFileResponse {
+}
+
+message ListFilesRequest {
+}
+
+message ListFilesResponse {
+  repeated FileSummary files = 1;
+}
+
+message FileSummary {
+  string file_id = 1;
+  string file_name = 2;
+  int64 file_size_bytes = 3;
+}
+
+// ----------------------------
+// Shared Types
+// ----------------------------
+
+message ChunkPlan {
+  string chunk_id = 1;
+  int64 offset_bytes = 2;
+  int64 size_bytes = 3;
+  repeated Replica replicas = 4;
+}
+
+message Replica {
+  string node_id = 1;
+  string address = 2; // host:port
+}
+
+// ----------------------------
+// Service
+// ----------------------------
+
+service MetadataService {
+  rpc PrepareUpload(PrepareUploadRequest)
+      returns (PrepareUploadResponse);
+
+  rpc CommitUpload(CommitUploadRequest)
+      returns (CommitUploadResponse);
+
+  rpc GetFile(GetFileRequest)
+      returns (GetFileResponse);
+
+  rpc DeleteFile(DeleteFileRequest)
+      returns (DeleteFileResponse);
+
+  rpc ListFiles(ListFilesRequest)
+      returns (ListFilesResponse);
+}

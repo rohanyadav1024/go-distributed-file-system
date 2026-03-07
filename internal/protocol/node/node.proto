@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package node;
+
+option go_package = "github.com/rohanyadav1024/dfs/internal/protocol/node;nodelpb";
+
+// ----------------------------
+// Messages
+// ----------------------------
+
+message HeartbeatRequest {
+  string node_id = 1;
+  string address = 2; // host:port
+  int64 capacity_bytes = 3;
+  int64 available_bytes = 4;
+}
+
+message HeartbeatResponse {
+}
+
+// ----------------------------
+// Service
+// ----------------------------
+
+service NodeService {
+  rpc Heartbeat(HeartbeatRequest)
+      returns (HeartbeatResponse);
+}

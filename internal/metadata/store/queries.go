@@ -16,6 +16,12 @@ FROM files
 WHERE file_id = ?
 `
 
+	querySelectAllFiles = `
+SELECT file_id, file_name, size_bytes, status, created_at
+FROM files
+ORDER BY created_at DESC
+`
+
 	queryUpdateFileStatus = `
 UPDATE files
 SET status = ?

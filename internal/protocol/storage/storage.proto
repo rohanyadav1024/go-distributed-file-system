@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package storage;
+
+option go_package = "github.com/rohanyadav1024/dfs/internal/protocol/storage;storagepb";
+
+// ----------------------------
+// Messages
+// ----------------------------
+
+message PutChunkRequest {
+  string chunk_id = 1;
+  bytes data = 2;
+}
+
+message PutChunkResponse {
+}
+
+message GetChunkRequest {
+  string chunk_id = 1;
+}
+
+message GetChunkResponse {
+  bytes data = 1;
+}
+
+message DeleteChunkRequest {
+  string chunk_id = 1;
+}
+
+message DeleteChunkResponse {
+}
+
+message HealthRequest {
+}
+
+message HealthResponse {
+  bool healthy = 1;
+}
+
+// ----------------------------
+// Service
+// ----------------------------
+
+service StorageService {
+  rpc PutChunk(PutChunkRequest)
+      returns (PutChunkResponse);
+
+  rpc GetChunk(GetChunkRequest)
+      returns (GetChunkResponse);
+
+  rpc DeleteChunk(DeleteChunkRequest)
+      returns (DeleteChunkResponse);
+
+  rpc Health(HealthRequest)
+      returns (HealthResponse);
+}

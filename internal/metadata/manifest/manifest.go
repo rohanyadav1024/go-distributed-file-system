@@ -16,6 +16,7 @@ type Manager struct {
 	store     store.Store
 	registry  *registry.Manager
 	placement *placement.Engine
+	chunkSize int64
 }
 
 // NewManager creates a new manifest manager.
@@ -23,11 +24,13 @@ func NewManager(
 	s store.Store,
 	r *registry.Manager,
 	p *placement.Engine,
+	chunkSize int64,
 ) *Manager {
 	return &Manager{
 		store:     s,
 		registry:  r,
 		placement: p,
+		chunkSize: chunkSize,
 	}
 }
 
@@ -38,25 +41,24 @@ func (m *Manager) PrepareUpload(
 	ctx context.Context,
 	fileName string,
 	fileSize int64,
-	chunkSize int64,
 ) (string, map[string][]string, error) {
 
-	if chunkSize <= 0 {
-		return "", nil, fmt.Errorf("invalid chunk size")
+	if m.chunkSize <= 0 {
+		return "", nil, fmt.Errorf("invalid configured chunk size")
 	}
 
 	fileID := ids.NewRequestID()
 	sessionID := ids.NewRequestID()
 
-	chunkCount := int((fileSize + chunkSize - 1) / chunkSize)
+	chunkCount := int((fileSize + m.chunkSize - 1) / m.chunkSize)
 	chunks := make([]store.Chunk, 0, chunkCount)
 
 	for i := 0; i < chunkCount; i++ {
 		chunkID := ids.NewRequestID()
 
-		size := chunkSize
+		size := m.chunkSize
 		if i == chunkCount-1 {
-			remaining := fileSize - int64(i)*chunkSize
+			remaining := fileSize - int64(i)*m.chunkSize
 			if remaining > 0 {
 				size = remaining
 			}
@@ -116,6 +118,53 @@ func (m *Manager) PrepareUpload(
 	}
 
 	return sessionID, replicaMap, nil
+}
+
+// GetFile retrieves file metadata.
+func (m *Manager) GetFile(ctx context.Context, fileID string) (*store.File, error) {
+	return m.store.GetFile(ctx, fileID)
+}
+
+// GetChunks retrieves all chunks for a file.
+func (m *Manager) GetChunks(ctx context.Context, fileID string) ([]store.Chunk, error) {
+	return m.store.GetChunksByFileID(ctx, fileID)
+}
+
+// GetChunkLocations retrieves all replica locations for a chunk.
+func (m *Manager) GetChunkLocations(ctx context.Context, chunkID string) ([]store.ChunkLocation, error) {
+	return m.store.GetChunkLocations(ctx, chunkID)
+}
+
+// DeleteFile marks a file as deleted.
+func (m *Manager) DeleteFile(ctx context.Context, fileID string) error {
+	file, err := m.store.GetFile(ctx, fileID)
+	if err != nil {
+		return err
+	}
+
+	if file == nil {
+		return fmt.Errorf("file not found")
+	}
+
+	return m.store.UpdateFileStatus(ctx, fileID, "deleted")
+}
+
+// ListFiles returns all committed files.
+func (m *Manager) ListFiles(ctx context.Context) ([]store.File, error) {
+	files, err := m.store.ListFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter for committed files only
+	var committedFiles []store.File
+	for _, f := range files {
+		if f.Status == "committed" {
+			committedFiles = append(committedFiles, f)
+		}
+	}
+
+	return committedFiles, nil
 }
 
 // CommitUpload finalizes an upload session by:

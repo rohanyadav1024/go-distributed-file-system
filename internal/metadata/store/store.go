@@ -50,6 +50,7 @@ type Store interface {
 	// -------- File operations --------
 	CreateFile(ctx context.Context, file File) error
 	GetFile(ctx context.Context, fileID string) (*File, error)
+	ListFiles(ctx context.Context) ([]File, error)
 	UpdateFileStatus(ctx context.Context, fileID string, status string) error
 
 	// -------- Chunk operations --------

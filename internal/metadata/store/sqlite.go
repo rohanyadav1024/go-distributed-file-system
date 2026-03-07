@@ -146,6 +146,26 @@ func (s *SQLiteStore) GetFile(ctx context.Context, fileID string) (*File, error)
 	return &file, nil
 }
 
+// ListFiles retrieves all files ordered by creation time (newest first).
+func (s *SQLiteStore) ListFiles(ctx context.Context) ([]File, error) {
+	rows, err := s.exec.QueryContext(ctx, querySelectAllFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files: %w", err)
+	}
+	defer rows.Close()
+
+	var files []File
+	for rows.Next() {
+		var f File
+		if err := rows.Scan(&f.FileID, &f.FileName, &f.SizeBytes, &f.Status, &f.CreatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan file: %w", err)
+		}
+		files = append(files, f)
+	}
+
+	return files, nil
+}
+
 // UpdateFileStatus updates the status of a file.
 func (s *SQLiteStore) UpdateFileStatus(ctx context.Context, fileID string, status string) error {
 	_, err := s.exec.ExecContext(ctx, queryUpdateFileStatus, status, fileID)
