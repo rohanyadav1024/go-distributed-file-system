@@ -28,6 +28,7 @@ type ChunkLocation struct {
 
 type Node struct {
 	NodeID         string
+	Address        string
 	CapacityBytes  int64
 	AvailableBytes int64
 	Status         string // healthy, down
@@ -67,6 +68,7 @@ type Store interface {
 	ListHealthyNodes(ctx context.Context) ([]Node, error)
 	ListAllNodes(ctx context.Context) ([]Node, error)
 	UpdateNodeStatus(ctx context.Context, nodeID string, status string) error
+	UpsertNodeHeartbeat(ctx context.Context, nodeID string, address string, capacityBytes int64, availableBytes int64) error
 
 	// -------- Upload session operations --------
 	CreateUploadSession(ctx context.Context, session UploadSession) error

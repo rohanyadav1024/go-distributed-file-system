@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
+	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	"google.golang.org/grpc/codes"
@@ -24,6 +25,7 @@ type metadataServer struct {
 // nodeServer implements NodeService.
 type nodeServer struct {
 	nodepb.UnimplementedNodeServiceServer
+	registry *registry.Manager
 }
 
 // ----------------------------
@@ -229,6 +231,20 @@ func (s *nodeServer) Heartbeat(
 	ctx context.Context,
 	req *nodepb.HeartbeatRequest,
 ) (*nodepb.HeartbeatResponse, error) {
+
+	nodeID := req.GetNodeId()
+	address := req.GetAddress()
+	capacityBytes := req.GetCapacityBytes()
+	availableBytes := req.GetAvailableBytes()
+
+	if nodeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "node_id is required")
+	}
+
+	// Upsert node: register new or update existing
+	if err := s.registry.Heartbeat(ctx, nodeID, address, capacityBytes, availableBytes); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to register or update node: %v", err)
+	}
 
 	return &nodepb.HeartbeatResponse{}, nil
 }

@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	"net"
+
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
@@ -15,14 +17,11 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/metadata/policy"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
-)
-
-import (
-	"net"
-
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
+
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 )
 
@@ -91,6 +90,7 @@ func main() {
 	// ----------------------------
 
 	manifestManager := manifest.NewManager(metaStore, reg, place, chunkSize)
+	registryManager := registry.NewManager(metaStore, failureTimeout)
 
 	log.Info("metad bootstrap complete")
 
@@ -105,10 +105,16 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
+	// Register gRPC services 
+	reflection.Register(grpcServer)
+
 	metadatapb.RegisterMetadataServiceServer(grpcServer, &metadataServer{
 		manifest: manifestManager,
 	})
-	nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{})
+	// nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{})
+	 nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
+ 	registry: registryManager,
+ })
 
 	log.Info("gRPC server listening on :50051")
 

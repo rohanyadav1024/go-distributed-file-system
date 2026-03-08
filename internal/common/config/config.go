@@ -16,6 +16,7 @@ type Config struct {
 
 	// Metadata
 	MetadataDBPath         string
+	MetadataAddr           string
 	ReplicationFactor      int
 	FailureTimeoutSeconds  int
 	MonitorIntervalSeconds int
@@ -38,6 +39,7 @@ func Load() Config {
 		},
 
 		MetadataDBPath:         getEnv("DFS_METADATA_DB_PATH", "./data/metad/metad.db"),
+		MetadataAddr:           getEnv("DFS_METADATA_ADDR", ":50051"),
 		ReplicationFactor:      parseInt(getEnv("DFS_REPLICATION_FACTOR", "2")),
 		FailureTimeoutSeconds:  parseInt(getEnv("DFS_FAILURE_TIMEOUT_SECONDS", "10")),
 		MonitorIntervalSeconds: parseInt(getEnv("DFS_MONITOR_INTERVAL_SECONDS", "3")),

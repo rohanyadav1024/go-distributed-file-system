@@ -30,6 +30,7 @@ func NewManager(
 func (m *Manager) RegisterNode(
 	ctx context.Context,
 	nodeID string,
+	address string,
 	capacityBytes int64,
 ) error {
 
@@ -39,6 +40,7 @@ func (m *Manager) RegisterNode(
 
 	return m.store.RegisterNode(ctx, store.Node{
 		NodeID:         nodeID,
+		Address:        address,
 		CapacityBytes:  capacityBytes,
 		AvailableBytes: capacityBytes,
 		Status:         "healthy",
@@ -46,25 +48,19 @@ func (m *Manager) RegisterNode(
 	})
 }
 
-// Heartbeat updates node liveness timestamp.
-func (m *Manager) Heartbeat(ctx context.Context, nodeID string) error {
+// Heartbeat updates node liveness timestamp and node metadata.
+func (m *Manager) Heartbeat(
+	ctx context.Context,
+	nodeID string,
+	address string,
+	capacityBytes int64,
+	availableBytes int64,
+) error {
 	if nodeID == "" {
 		return fmt.Errorf("nodeID cannot be empty")
 	}
 
-	now := time.Now().Unix()
-
-	// Update heartbeat timestamp
-	if err := m.store.UpdateNodeHeartbeat(ctx, nodeID, now); err != nil {
-		return err
-	}
-
-	// Ensure node is marked healthy (recovery case)
-	if err := m.store.UpdateNodeStatus(ctx, nodeID, "healthy"); err != nil {
-		return err
-	}
-
-	return nil
+	return m.store.UpsertNodeHeartbeat(ctx, nodeID, address, capacityBytes, availableBytes)
 }
 
 // ListHealthyNodes returns all currently healthy nodes.

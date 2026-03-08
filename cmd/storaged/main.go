@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
@@ -43,6 +45,26 @@ func main() {
 	)
 
 	// ----------------------------
+	// Initialize metad client for heartbeats
+	// ----------------------------
+
+	metadClient, err := newMetadClient(
+		ctx,
+		logging.L(),
+		cfg.StorageNodeID,
+		cfg.StorageListenAddr,
+		cfg.MetadataAddr,
+		100*1024*1024*1024, // 100GB capacity (configurable later)
+	)
+	if err != nil {
+		log.Fatal("failed to connect to metad", logging.WithError(err)...)
+	}
+	defer metadClient.close()
+
+	// Start background heartbeat loop (every 3 seconds)
+	metadClient.startHeartbeat(ctx, logging.L(), 3*time.Second)
+
+	// ----------------------------
 	// Initialize chunkstore
 	// ----------------------------
 
@@ -63,6 +85,9 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
+
+	// Register gRPC services and reflection for debugging
+	reflection.Register(grpcServer)
 
 	storagepb.RegisterStorageServiceServer(grpcServer, &storageServer{
 		store: store,

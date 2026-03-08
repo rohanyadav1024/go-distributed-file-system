@@ -70,8 +70,8 @@ WHERE chunk_id = ?
 
 const (
 	queryInsertNode = `
-INSERT INTO nodes (node_id, capacity_bytes, available_bytes, status, last_heartbeat)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO nodes (node_id, address, capacity_bytes, available_bytes, status, last_heartbeat)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 	queryUpdateNodeHeartbeat = `
@@ -81,19 +81,25 @@ WHERE node_id = ?
 `
 
 	querySelectHealthyNodes = `
-SELECT node_id, capacity_bytes, available_bytes, status, last_heartbeat
+SELECT node_id, address, capacity_bytes, available_bytes, status, last_heartbeat
 FROM nodes
 WHERE status = 'healthy'
 `
 
 	querySelectAllNodes = `
-SELECT node_id, capacity_bytes, available_bytes, status, last_heartbeat
+SELECT node_id, address, capacity_bytes, available_bytes, status, last_heartbeat
 FROM nodes
 `
 
 	queryUpdateNodeStatus = `
 UPDATE nodes
 SET status = ?
+WHERE node_id = ?
+`
+
+	queryUpsertNodeHeartbeat = `
+UPDATE nodes
+SET address = ?, capacity_bytes = ?, available_bytes = ?, last_heartbeat = ?, status = 'healthy'
 WHERE node_id = ?
 `
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -243,6 +244,7 @@ func (s *SQLiteStore) RegisterNode(ctx context.Context, node Node) error {
 		ctx,
 		queryInsertNode,
 		node.NodeID,
+		node.Address,
 		node.CapacityBytes,
 		node.AvailableBytes,
 		node.Status,
@@ -276,6 +278,7 @@ func (s *SQLiteStore) ListHealthyNodes(ctx context.Context) ([]Node, error) {
 		var n Node
 		if err := rows.Scan(
 			&n.NodeID,
+			&n.Address,
 			&n.CapacityBytes,
 			&n.AvailableBytes,
 			&n.Status,
@@ -352,6 +355,7 @@ func (s *SQLiteStore) ListAllNodes(ctx context.Context) ([]Node, error) {
 		var n Node
 		if err := rows.Scan(
 			&n.NodeID,
+			&n.Address,
 			&n.CapacityBytes,
 			&n.AvailableBytes,
 			&n.Status,
@@ -376,5 +380,56 @@ func (s *SQLiteStore) UpdateNodeStatus(
 	if err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
 	}
+	return nil
+}
+
+// UpsertNodeHeartbeat updates an existing node or inserts a new one if not found.
+// It updates address, capacity, available bytes, heartbeat timestamp, and marks status as healthy.
+func (s *SQLiteStore) UpsertNodeHeartbeat(
+	ctx context.Context,
+	nodeID string,
+	address string,
+	capacityBytes int64,
+	availableBytes int64,
+) error {
+	now := time.Now().Unix()
+
+	// Attempt to UPDATE existing node
+	result, err := s.exec.ExecContext(
+		ctx,
+		queryUpsertNodeHeartbeat,
+		address,
+		capacityBytes,
+		availableBytes,
+		now,
+		nodeID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update node heartbeat: %w", err)
+	}
+
+	// Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	// If no rows were updated, insert new node
+	if rowsAffected == 0 {
+		_, err := s.exec.ExecContext(
+			ctx,
+			queryInsertNode,
+			nodeID,
+			address,
+			capacityBytes,
+			availableBytes,
+			"healthy",
+			now,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert node: %w", err)
+		}
+	}
+
 	return nil
 }

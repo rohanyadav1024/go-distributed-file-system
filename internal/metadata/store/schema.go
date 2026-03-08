@@ -1,5 +1,3 @@
-
-
 package store
 
 // schema defines the SQLite schema for the metadata layer.
@@ -31,6 +29,7 @@ CREATE TABLE IF NOT EXISTS chunk_locations (
 
 CREATE TABLE IF NOT EXISTS nodes (
     node_id TEXT PRIMARY KEY,
+    address TEXT NOT NULL,
     capacity_bytes INTEGER NOT NULL,
     available_bytes INTEGER NOT NULL,
     status TEXT NOT NULL,
