@@ -15,6 +15,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
+	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	storagepb "github.com/rohanyadav1024/dfs/internal/protocol/storage"
 	"github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
 )
@@ -90,6 +91,10 @@ func main() {
 	reflection.Register(grpcServer)
 
 	storagepb.RegisterStorageServiceServer(grpcServer, &storageServer{
+		store: store,
+	})
+
+	nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
 		store: store,
 	})
 

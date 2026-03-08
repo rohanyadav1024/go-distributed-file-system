@@ -20,6 +20,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	nodeclient "github.com/rohanyadav1024/dfs/internal/node"
 
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
 
@@ -80,8 +81,21 @@ func main() {
 	// Initialize replication repair manager
 	// ----------------------------
 
-	repairManager := repair.NewManager(metaStore, reg, cfg.ReplicationFactor, logging.L())
-	repairManager.StartScanner(ctx, 5*time.Second)
+	// repairManager := repair.NewManager(metaStore, reg, cfg.ReplicationFactor, logging.L())
+	// repairManager.StartScanner(ctx, 5*time.Second)
+
+nodeClient := &nodeclient.Client{}
+
+repairManager := repair.NewManager(
+    metaStore,
+    reg,
+    cfg.ReplicationFactor,
+    logging.FromContext(ctx),
+    nodeClient,
+)
+
+// Start repair scanner
+repairManager.StartScanner(ctx, 5*time.Second)
 
 	// ----------------------------
 	// Initialize chunk size policy

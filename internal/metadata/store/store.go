@@ -62,6 +62,7 @@ type Store interface {
 	// -------- Replica operations --------
 	InsertChunkLocations(ctx context.Context, locations []ChunkLocation) error
 	GetChunkLocations(ctx context.Context, chunkID string) ([]ChunkLocation, error)
+	AddChunkLocation(ctx context.Context, chunkID string, nodeID string) error
 
 	// -------- Node operations --------
 	RegisterNode(ctx context.Context, node Node) error

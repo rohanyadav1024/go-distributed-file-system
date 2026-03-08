@@ -258,6 +258,21 @@ func (s *SQLiteStore) GetChunkLocations(ctx context.Context, chunkID string) ([]
 	return locations, nil
 }
 
+// AddChunkLocation adds a replica location for a chunk (idempotent insert).
+func (s *SQLiteStore) AddChunkLocation(ctx context.Context, chunkID string, nodeID string) error {
+	// Idempotent insert: ignore if already exists
+	_, err := s.exec.ExecContext(
+		ctx,
+		queryInsertChunkLocation,
+		chunkID,
+		nodeID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add chunk location: %w", err)
+	}
+	return nil
+}
+
 // RegisterNode inserts a new storage node.
 func (s *SQLiteStore) RegisterNode(ctx context.Context, node Node) error {
 	_, err := s.exec.ExecContext(

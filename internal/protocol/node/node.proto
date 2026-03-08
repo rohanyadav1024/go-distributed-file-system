@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package node;
 
-option go_package = "github.com/rohanyadav1024/dfs/internal/protocol/node;nodelpb";
+option go_package = "github.com/rohanyadav1024/dfs/internal/protocol/node;nodepb";
 
 // ----------------------------
 // Messages
@@ -18,6 +18,15 @@ message HeartbeatRequest {
 message HeartbeatResponse {
 }
 
+message CopyChunkRequest {
+  string chunk_id = 1;
+  string source_address = 2;
+}
+
+message CopyChunkResponse {
+  bool success = 1;
+}
+
 // ----------------------------
 // Service
 // ----------------------------
@@ -25,4 +34,6 @@ message HeartbeatResponse {
 service NodeService {
   rpc Heartbeat(HeartbeatRequest)
       returns (HeartbeatResponse);
+  rpc CopyChunk(CopyChunkRequest)
+      returns (CopyChunkResponse);
 }
