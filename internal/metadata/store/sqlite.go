@@ -207,6 +207,26 @@ func (s *SQLiteStore) GetChunksByFileID(ctx context.Context, fileID string) ([]C
 	return chunks, nil
 }
 
+// ListAllChunks retrieves all chunks from the system.
+func (s *SQLiteStore) ListAllChunks(ctx context.Context) ([]Chunk, error) {
+	rows, err := s.exec.QueryContext(ctx, querySelectAllChunks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query all chunks: %w", err)
+	}
+	defer rows.Close()
+
+	var chunks []Chunk
+	for rows.Next() {
+		var c Chunk
+		if err := rows.Scan(&c.ChunkID, &c.FileID, &c.Index, &c.SizeBytes); err != nil {
+			return nil, fmt.Errorf("failed to scan chunk: %w", err)
+		}
+		chunks = append(chunks, c)
+	}
+
+	return chunks, nil
+}
+
 // InsertChunkLocations inserts replica mappings.
 func (s *SQLiteStore) InsertChunkLocations(ctx context.Context, locations []ChunkLocation) error {
 	for _, l := range locations {

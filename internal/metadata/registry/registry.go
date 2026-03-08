@@ -68,6 +68,26 @@ func (m *Manager) ListHealthyNodes(ctx context.Context) ([]store.Node, error) {
 	return m.store.ListHealthyNodes(ctx)
 }
 
+// IsNodeHealthy checks if a node is currently healthy.
+func (m *Manager) IsNodeHealthy(ctx context.Context, nodeID string) (bool, error) {
+	if nodeID == "" {
+		return false, fmt.Errorf("nodeID cannot be empty")
+	}
+
+	nodes, err := m.store.ListHealthyNodes(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, node := range nodes {
+		if node.NodeID == nodeID {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (m *Manager) StartMonitor(ctx context.Context, interval time.Duration) {
 	go func() {
 		// Create a ticker that sends a signal on ticker.C

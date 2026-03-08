@@ -16,6 +16,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/metadata/placement"
 	"github.com/rohanyadav1024/dfs/internal/metadata/policy"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
+	"github.com/rohanyadav1024/dfs/internal/metadata/repair"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -76,6 +77,13 @@ func main() {
 	place := placement.NewEngine(cfg.ReplicationFactor)
 
 	// ----------------------------
+	// Initialize replication repair manager
+	// ----------------------------
+
+	repairManager := repair.NewManager(metaStore, reg, cfg.ReplicationFactor, logging.L())
+	repairManager.StartScanner(ctx, 5*time.Second)
+
+	// ----------------------------
 	// Initialize chunk size policy
 	// ----------------------------
 
@@ -105,16 +113,16 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	// Register gRPC services 
+	// Register gRPC services
 	reflection.Register(grpcServer)
 
 	metadatapb.RegisterMetadataServiceServer(grpcServer, &metadataServer{
 		manifest: manifestManager,
 	})
 	// nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{})
-	 nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
- 	registry: registryManager,
- })
+	nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
+		registry: registryManager,
+	})
 
 	log.Info("gRPC server listening on :50051")
 

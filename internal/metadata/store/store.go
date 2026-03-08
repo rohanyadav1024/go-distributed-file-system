@@ -57,6 +57,7 @@ type Store interface {
 	// -------- Chunk operations --------
 	InsertChunks(ctx context.Context, chunks []Chunk) error
 	GetChunksByFileID(ctx context.Context, fileID string) ([]Chunk, error)
+	ListAllChunks(ctx context.Context) ([]Chunk, error)
 
 	// -------- Replica operations --------
 	InsertChunkLocations(ctx context.Context, locations []ChunkLocation) error

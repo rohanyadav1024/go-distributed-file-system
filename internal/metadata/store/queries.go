@@ -45,6 +45,11 @@ FROM chunks
 WHERE file_id = ?
 ORDER BY chunk_index ASC
 `
+
+	querySelectAllChunks = `
+SELECT chunk_id, file_id, chunk_index, size_bytes
+FROM chunks
+`
 )
 
 // -----------------------------
