@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	customerrors "github.com/rohanyadav1024/dfs/internal/common/errors"
 )
@@ -19,7 +20,7 @@ const (
 	lengthSize   = 8
 	headerSize   = checksumSize + lengthSize
 	// minSize      = 1          // Minimum chunk size in bytes
-	maxSize      = 16 * 1024 * 1024 // Maximum chunk size in bytes (16MB)
+	maxSize = 16 * 1024 * 1024 // Maximum chunk size in bytes (16MB)
 )
 
 // All the methods are designed to be context-aware,
@@ -30,7 +31,7 @@ const (
 // and Exists provide basic chunk management capabilities.
 
 // All methods are implemneted considering chunk which will be
-// having a fixed size and immutable once written, 
+// having a fixed size and immutable once written,
 // which is a common pattern in chunk storage systems.
 
 // Store defines the interface for a chunk storage system.
@@ -39,17 +40,21 @@ type Store interface {
 	Get(ctx context.Context, chunkID string) (io.ReadCloser, error)
 	Delete(ctx context.Context, chunkID string) error
 	Exists(ctx context.Context, chunkID string) (bool, error)
+	AvailableBytes() int64
+	CapacityBytes() int64
 }
 
 // DiskStore implements Store using the local filesystem.
 type DiskStore struct {
-	baseDir string
-//   minSize int
-//   maxSize int
+	baseDir       string
+	capacityBytes int64
+	usedBytes     int64
+	mu            sync.Mutex
+	// minSize int
+	// maxSize int
 }
 
-
-func New(baseDir string) (*DiskStore, error) {
+func New(baseDir string, capacityBytes int64) (*DiskStore, error) {
 	if baseDir == "" {
 		return nil, customerrors.New(customerrors.CodeInvalidArgument, "base directory cannot be empty")
 	}
@@ -59,7 +64,48 @@ func New(baseDir string) (*DiskStore, error) {
 		return nil, customerrors.Wrap(customerrors.CodeInternal, "failed to create base directory", err)
 	}
 
-	return &DiskStore{baseDir: path}, nil
+	// Scan existing chunk files and compute used bytes
+	usedBytes, err := scanUsedBytes(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DiskStore{
+		baseDir:       path,
+		capacityBytes: capacityBytes,
+		usedBytes:     usedBytes,
+	}, nil
+}
+
+// scanUsedBytes walks the directory tree and sums actual file sizes.
+func scanUsedBytes(baseDir string) (int64, error) {
+	var total int64
+	if err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			total += info.Size()
+		}
+		return nil
+	}); err != nil {
+		return 0, customerrors.Wrap(customerrors.CodeInternal, "failed to scan chunk directory", err)
+	}
+	return total, nil
+}
+
+// AvailableBytes returns remaining capacity.
+func (ds *DiskStore) AvailableBytes() int64 {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+	return ds.capacityBytes - ds.usedBytes
+}
+
+// CapacityBytes returns total capacity.
+func (ds *DiskStore) CapacityBytes() int64 {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+	return ds.capacityBytes
 }
 
 // Path resolves chunkID into deterministic sharded path.
@@ -88,7 +134,7 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 
 	// enforce chunk size constraints if configured
 	if len(data) > maxSize {
-	    return customerrors.New(customerrors.CodeInvalidArgument, "chunk size out of allowed range")
+		return customerrors.New(customerrors.CodeInvalidArgument, "chunk size out of allowed range")
 	}
 
 	hashVal := sha256.Sum256(data)
@@ -159,6 +205,11 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 		os.Remove(tempFile.Name())
 		return customerrors.Wrap(customerrors.CodeInternal, "failed to rename temp file", err)
 	}
+
+	// Track disk usage
+	ds.mu.Lock()
+	ds.usedBytes += int64(headerSize) + int64(len(data))
+	ds.mu.Unlock()
 
 	return nil
 }
@@ -240,6 +291,19 @@ func (v *verifiedReadCloser) Close() error {
 
 func (ds *DiskStore) Delete(ctx context.Context, chunkID string) error {
 	path := ds.Path(chunkID)
+
+	// Get file size before deletion
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return customerrors.Wrap(customerrors.CodeInternal,
+			"failed to stat chunk", err)
+	}
+
+	fileSize := info.Size()
+
 	if err := os.Remove(path); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -247,6 +311,12 @@ func (ds *DiskStore) Delete(ctx context.Context, chunkID string) error {
 		return customerrors.Wrap(customerrors.CodeInternal,
 			"failed to delete chunk", err)
 	}
+
+	// Track disk usage
+	ds.mu.Lock()
+	ds.usedBytes -= fileSize
+	ds.mu.Unlock()
+
 	return nil
 }
 

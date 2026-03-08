@@ -45,6 +45,15 @@ func main() {
 	)
 
 	// ----------------------------
+	// Initialize chunkstore (before metad client)
+	// ----------------------------
+
+	store, err := chunkstore.New(cfg.StorageDataPath, cfg.StorageCapacityBytes)
+	if err != nil {
+		log.Fatal("failed to initialize chunkstore", logging.WithError(err)...)
+	}
+
+	// ----------------------------
 	// Initialize metad client for heartbeats
 	// ----------------------------
 
@@ -54,7 +63,7 @@ func main() {
 		cfg.StorageNodeID,
 		cfg.StorageListenAddr,
 		cfg.MetadataAddr,
-		100*1024*1024*1024, // 100GB capacity (configurable later)
+		store,
 	)
 	if err != nil {
 		log.Fatal("failed to connect to metad", logging.WithError(err)...)
@@ -63,15 +72,6 @@ func main() {
 
 	// Start background heartbeat loop (every 3 seconds)
 	metadClient.startHeartbeat(ctx, logging.L(), 3*time.Second)
-
-	// ----------------------------
-	// Initialize chunkstore
-	// ----------------------------
-
-	store, err := chunkstore.New(cfg.StorageDataPath)
-	if err != nil {
-		log.Fatal("failed to initialize chunkstore", logging.WithError(err)...)
-	}
 
 	log.Info("storaged bootstrap complete")
 

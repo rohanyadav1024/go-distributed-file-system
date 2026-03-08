@@ -22,9 +22,10 @@ type Config struct {
 	MonitorIntervalSeconds int
 
 	// Storage
-	StorageDataPath   string
-	StorageListenAddr string
-	StorageNodeID     string
+	StorageDataPath      string
+	StorageListenAddr    string
+	StorageNodeID        string
+	StorageCapacityBytes int64
 }
 
 func Load() Config {
@@ -46,6 +47,7 @@ func Load() Config {
 		StorageDataPath:        getEnv("DFS_STORAGE_DATA_PATH", "./data/storaged"),
 		StorageListenAddr:      getEnv("DFS_STORAGE_LISTEN_ADDR", ":50052"),
 		StorageNodeID:          getEnv("DFS_STORAGE_NODE_ID", "storage-1"),
+		StorageCapacityBytes:   int64(parseInt(getEnv("DFS_STORAGE_CAPACITY_BYTES", "10737418240"))), // 10GB default
 	}
 
 	return cfg

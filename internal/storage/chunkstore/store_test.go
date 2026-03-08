@@ -15,7 +15,7 @@ func newTestStore(t *testing.T) (*DiskStore, string) {
 
 	dir := t.TempDir()
 
-	store, err := New(dir)
+	store, err := New(dir, 100*1024*1024) // 100MB for testing
 	if err != nil {
 		t.Fatalf("failed to create store: %v", err)
 	}

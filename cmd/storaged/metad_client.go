@@ -5,6 +5,7 @@ import (
 	"time"
 
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
+	chunkstore "github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -16,6 +17,7 @@ type metadClient struct {
 	nodeID        string
 	nodeAddr      string
 	capacityBytes int64
+	store         chunkstore.Store
 }
 
 // newMetadClient dials metad and sends initial heartbeat (acts as registration)
@@ -25,7 +27,7 @@ func newMetadClient(
 	nodeID string,
 	nodeAddr string,
 	metadAddr string,
-	capacityBytes int64,
+	store chunkstore.Store,
 ) (*metadClient, error) {
 
 	conn, err := grpc.DialContext(
@@ -45,15 +47,16 @@ func newMetadClient(
 		client:        client,
 		nodeID:        nodeID,
 		nodeAddr:      nodeAddr,
-		capacityBytes: capacityBytes,
+		capacityBytes: store.CapacityBytes(),
+		store:         store,
 	}
 
 	// Initial heartbeat = registration
 	_, err = client.Heartbeat(ctx, &nodepb.HeartbeatRequest{
 		NodeId:         nodeID,
 		Address:        nodeAddr,
-		CapacityBytes:  capacityBytes,
-		AvailableBytes: capacityBytes,
+		CapacityBytes:  m.capacityBytes,
+		AvailableBytes: m.store.AvailableBytes(),
 	})
 	if err != nil {
 		conn.Close()
@@ -63,7 +66,7 @@ func newMetadClient(
 	log.Info("registered with metad via heartbeat",
 		zap.String("node_id", nodeID),
 		zap.String("address", nodeAddr),
-		zap.Int64("capacity_bytes", capacityBytes),
+		zap.Int64("capacity_bytes", m.capacityBytes),
 	)
 
 	return m, nil
@@ -91,7 +94,7 @@ func (m *metadClient) startHeartbeat(
 					NodeId:         m.nodeID,
 					Address:        m.nodeAddr,
 					CapacityBytes:  m.capacityBytes,
-					AvailableBytes: m.capacityBytes,
+					AvailableBytes: m.store.AvailableBytes(),
 				})
 				if err != nil {
 					log.Warn("heartbeat failed",
