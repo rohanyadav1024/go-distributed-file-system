@@ -1,0 +1,81 @@
+services:
+  metad:
+    build:
+      context: .
+      dockerfile: Dockerfile.metad
+    environment:
+      DFS_REPLICATION_FACTOR: "3"
+      DFS_METADATA_DB_PATH: /var/lib/dfs/metad.db
+    ports:
+      - "50051:50051"
+    volumes:
+      - metad_db:/var/lib/dfs
+    networks:
+      - dfs-net
+
+  storaged1:
+    build:
+      context: .
+      dockerfile: Dockerfile.storaged
+    depends_on:
+      - metad
+    environment:
+      DFS_STORAGE_DATA_PATH: /var/lib/dfs/storage
+      DFS_STORAGE_CAPACITY_BYTES: "10737418240"
+      DFS_STORAGE_NODE_ID: storage-1
+      DFS_STORAGE_LISTEN_ADDR: storaged1:50052
+      DFS_METADATA_ADDR: metad:50051
+    ports:
+      - "50052:50052"
+    volumes:
+      - storaged1_data:/var/lib/dfs/storage
+    networks:
+      - dfs-net
+
+  storaged2:
+    build:
+      context: .
+      dockerfile: Dockerfile.storaged
+    depends_on:
+      - metad
+    environment:
+      DFS_STORAGE_DATA_PATH: /var/lib/dfs/storage
+      DFS_STORAGE_CAPACITY_BYTES: "10737418240"
+      DFS_STORAGE_NODE_ID: storage-2
+      DFS_STORAGE_LISTEN_ADDR: storaged2:50052
+      DFS_METADATA_ADDR: metad:50051
+    ports:
+      - "50053:50052"
+    volumes:
+      - storaged2_data:/var/lib/dfs/storage
+    networks:
+      - dfs-net
+
+  storaged3:
+    build:
+      context: .
+      dockerfile: Dockerfile.storaged
+    depends_on:
+      - metad
+    environment:
+      DFS_STORAGE_DATA_PATH: /var/lib/dfs/storage
+      DFS_STORAGE_CAPACITY_BYTES: "10737418240"
+      DFS_STORAGE_NODE_ID: storage-3
+      DFS_STORAGE_LISTEN_ADDR: storaged3:50052
+      DFS_METADATA_ADDR: metad:50051
+    ports:
+      - "50054:50052"
+    volumes:
+      - storaged3_data:/var/lib/dfs/storage
+    networks:
+      - dfs-net
+
+networks:
+  dfs-net:
+    driver: bridge
+
+volumes:
+  metad_db:
+  storaged1_data:
+  storaged2_data:
+  storaged3_data:

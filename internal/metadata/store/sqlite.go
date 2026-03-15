@@ -36,6 +36,12 @@ func NewSQLite(path string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
+	// SQLite allows only one writer at a time; keep one shared connection
+	// to avoid write lock contention across pooled connections.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
+
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping sqlite database: %w", err)
 	}
@@ -60,6 +66,7 @@ func (s *SQLiteStore) initPragmas() error {
 	pragmas := []string{
 		`PRAGMA journal_mode = WAL;`,
 		`PRAGMA foreign_keys = ON;`,
+		`PRAGMA busy_timeout = 5000;`,
 	}
 
 	for _, p := range pragmas {
