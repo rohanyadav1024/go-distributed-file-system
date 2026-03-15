@@ -16,7 +16,6 @@ run.txt
 
 # Non-runtime project assets
 docs/
-deploy/
 test/
 
 # Docker ignore file used by Docker engine

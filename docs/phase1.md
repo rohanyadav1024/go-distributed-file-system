@@ -35,7 +35,7 @@ Recommended path:
 
 ```bash
 ./scripts/generate-certs.sh init certs
-docker compose up --build --scale storaged=3
+docker compose -f deploy/docker-compose.yml up --build --scale storaged=3
 ```
 
 This starts:
@@ -53,13 +53,7 @@ docker compose down
 
 ## Run With Docker
 
-Use either compose file:
-
-```bash
-docker compose up --build --scale storaged=3
-```
-
-Or:
+Use the canonical deploy compose file:
 
 ```bash
 docker compose -f deploy/docker-compose.yml up --build --scale storaged=3
@@ -79,6 +73,17 @@ Requirements:
 - Go `1.24.5`
 - locally available TLS files at `/certs/ca.crt`, `/certs/server.crt`, and `/certs/server.key`
 
+Generate local certs and prepare `/certs`:
+
+```bash
+./scripts/generate-certs.sh init certs
+./scripts/generate-certs.sh sign certs/metad metad 'DNS:metad,DNS:localhost,IP:127.0.0.1' certs/ca
+sudo mkdir -p /certs
+sudo cp certs/ca/ca.crt /certs/ca.crt
+sudo cp certs/metad/server.crt /certs/server.crt
+sudo cp certs/metad/server.key /certs/server.key
+```
+
 Run `metad`:
 
 ```bash
@@ -88,11 +93,14 @@ DFS_JWT_SECRET=change-me go run ./cmd/metad
 Run a storage node in another terminal:
 
 ```bash
-DFS_STORAGE_NODE_ID=storaged-local \
-DFS_STORAGE_LISTEN_ADDR=:50052 \
-DFS_STORAGE_DATA_PATH=./data/storaged \
+./scripts/generate-certs.sh sign certs/storaged/local-node local-node 'DNS:local-node,DNS:localhost,IP:127.0.0.1' certs/ca
+sudo cp certs/storaged/local-node/server.crt /certs/server.crt
+sudo cp certs/storaged/local-node/server.key /certs/server.key
+DFS_STORAGE_NODE_ID=local-node \
+DFS_STORAGE_LISTEN_ADDR=127.0.0.1:50052 \
+DFS_STORAGE_DATA_PATH=./data/local-node \
 DFS_STORAGE_CAPACITY_BYTES=10737418240 \
-DFS_METADATA_ADDR=:50051 \
+DFS_METADATA_ADDR=127.0.0.1:50051 \
 go run ./cmd/storaged
 ```
 
@@ -105,6 +113,7 @@ DFS_JWT_SECRET=change-me go run ./cmd/token
 CLI note:
 
 - Docker is the easiest way to run a full multi-node Phase 1 setup because certificate generation and service wiring are handled there
+- local `go run` is best for single-node development with explicit cert setup
 
 ## Project Structure
 
@@ -132,11 +141,11 @@ dfs/
 │   └── storage/
 ├── scripts/
 ├── test/
-├── docker-compose.yml
+├── deploy/docker-compose.yml
 ├── Dockerfile.metad
 ├── Dockerfile.storaged
 ├── README.md
-└── dfs_phase1_README.md
+└── docs/phase1.md
 ```
 
 ## Upcoming

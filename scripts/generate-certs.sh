@@ -46,7 +46,8 @@ sign_cert() {
 
   san_file="$out_dir/san.ext"
   csr_file="$out_dir/server.csr"
-  serial_file="$ca_dir/ca.srl"
+  # CA is mounted read-only in containers; keep serial file in writable cert dir.
+  serial_file="$out_dir/ca.srl"
 
   printf 'subjectAltName=%s\n' "$san_list" > "$san_file"
 
