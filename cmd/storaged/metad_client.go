@@ -6,6 +6,7 @@ import (
 
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	chunkstore "github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
+	storagemetrics "github.com/rohanyadav1024/dfs/internal/storage/metrics"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -52,11 +53,13 @@ func newMetadClient(
 	}
 
 	// Initial heartbeat = registration
+	availableBytes := m.store.AvailableBytes()
+	storagemetrics.SetAvailableBytes(availableBytes)
 	_, err = client.Heartbeat(ctx, &nodepb.HeartbeatRequest{
 		NodeId:         nodeID,
 		Address:        nodeAddr,
 		CapacityBytes:  m.capacityBytes,
-		AvailableBytes: m.store.AvailableBytes(),
+		AvailableBytes: availableBytes,
 	})
 	if err != nil {
 		conn.Close()
@@ -90,11 +93,13 @@ func (m *metadClient) startHeartbeat(
 				return
 
 			case <-ticker.C:
+				availableBytes := m.store.AvailableBytes()
+				storagemetrics.SetAvailableBytes(availableBytes)
 				_, err := m.client.Heartbeat(ctx, &nodepb.HeartbeatRequest{
 					NodeId:         m.nodeID,
 					Address:        m.nodeAddr,
 					CapacityBytes:  m.capacityBytes,
-					AvailableBytes: m.store.AvailableBytes(),
+					AvailableBytes: availableBytes,
 				})
 				if err != nil {
 					log.Warn("heartbeat failed",

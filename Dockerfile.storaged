@@ -15,5 +15,6 @@ WORKDIR /app
 COPY --from=builder /out/storaged /usr/local/bin/storaged
 
 EXPOSE 50052
+EXPOSE 9091
 
 ENTRYPOINT ["/usr/local/bin/storaged"]

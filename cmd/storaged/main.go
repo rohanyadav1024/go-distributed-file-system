@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -18,6 +21,7 @@ import (
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	storagepb "github.com/rohanyadav1024/dfs/internal/protocol/storage"
 	"github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
+	storagemetrics "github.com/rohanyadav1024/dfs/internal/storage/metrics"
 )
 
 func main() {
@@ -38,6 +42,7 @@ func main() {
 
 	log := logging.FromContext(ctx)
 	log.Info("storaged starting up")
+	storagemetrics.Register()
 
 	log.Info("storaged starting up",
 		zap.String("node_id", cfg.StorageNodeID),
@@ -53,6 +58,7 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to initialize chunkstore", logging.WithError(err)...)
 	}
+	storagemetrics.SetAvailableBytes(store.AvailableBytes())
 
 	// ----------------------------
 	// Initialize metad client for heartbeats
@@ -110,6 +116,23 @@ func main() {
 		}
 	}()
 
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsServer := &http.Server{
+		Addr:    cfg.StorageMetricsAddr,
+		Handler: metricsMux,
+	}
+
+	go func() {
+		log.Info("metrics server listening",
+			zap.String("node_id", cfg.StorageNodeID),
+			zap.String("listen_addr", cfg.StorageMetricsAddr),
+		)
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("failed to serve metrics", logging.WithError(err)...)
+		}
+	}()
+
 	// ----------------------------
 	// Graceful shutdown handling
 	// ----------------------------
@@ -126,6 +149,12 @@ func main() {
 
 	// Gracefully stop gRPC server (finish in-flight RPCs)
 	grpcServer.GracefulStop()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		log.Warn("failed to shutdown metrics server cleanly", logging.WithError(err)...)
+	}
 
 	// Close listener explicitly (defensive cleanup)
 	_ = lis.Close()

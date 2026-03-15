@@ -15,5 +15,6 @@ WORKDIR /app
 COPY --from=builder /out/metad /usr/local/bin/metad
 
 EXPOSE 50051
+EXPOSE 9090
 
 ENTRYPOINT ["/usr/local/bin/metad"]

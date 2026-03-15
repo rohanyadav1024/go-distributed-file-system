@@ -50,6 +50,13 @@ ORDER BY chunk_index ASC
 SELECT chunk_id, file_id, chunk_index, size_bytes
 FROM chunks
 `
+
+	querySelectCommittedChunks = `
+SELECT c.chunk_id, c.file_id, c.chunk_index, c.size_bytes
+FROM chunks c
+JOIN files f ON f.file_id = c.file_id
+WHERE f.status = 'committed'
+`
 )
 
 // -----------------------------

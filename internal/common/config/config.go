@@ -17,6 +17,7 @@ type Config struct {
 	// Metadata
 	MetadataDBPath         string
 	MetadataAddr           string
+	MetadataMetricsAddr    string
 	ReplicationFactor      int
 	FailureTimeoutSeconds  int
 	MonitorIntervalSeconds int
@@ -24,6 +25,7 @@ type Config struct {
 	// Storage
 	StorageDataPath      string
 	StorageListenAddr    string
+	StorageMetricsAddr   string
 	StorageNodeID        string
 	StorageCapacityBytes int64
 }
@@ -41,11 +43,13 @@ func Load() Config {
 
 		MetadataDBPath:         getEnv("DFS_METADATA_DB_PATH", "./data/metad/metad.db"),
 		MetadataAddr:           getEnv("DFS_METADATA_ADDR", ":50051"),
+		MetadataMetricsAddr:    getEnv("DFS_METRICS_ADDR", ":9090"),
 		ReplicationFactor:      parseInt(getEnv("DFS_REPLICATION_FACTOR", "2")),
 		FailureTimeoutSeconds:  parseInt(getEnv("DFS_FAILURE_TIMEOUT_SECONDS", "10")),
 		MonitorIntervalSeconds: parseInt(getEnv("DFS_MONITOR_INTERVAL_SECONDS", "3")),
 		StorageDataPath:        getEnv("DFS_STORAGE_DATA_PATH", "./data/storaged"),
 		StorageListenAddr:      getEnv("DFS_STORAGE_LISTEN_ADDR", ":50052"),
+		StorageMetricsAddr:     getEnv("DFS_STORAGE_METRICS_ADDR", ":9091"),
 		StorageNodeID:          getEnv("DFS_STORAGE_NODE_ID", "storage-1"),
 		StorageCapacityBytes:   int64(parseInt(getEnv("DFS_STORAGE_CAPACITY_BYTES", "10737418240"))), // 10GB default
 	}

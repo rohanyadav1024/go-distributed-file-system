@@ -1,0 +1,23 @@
+# VCS / editor
+.git
+.gitignore
+.vscode/
+
+# Local runtime/state (must not be sent to build context)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local env and ad-hoc files
+.env
+.env.*
+run.txt
+
+# Non-runtime project assets
+docs/
+deploy/
+test/
+
+# Docker ignore file used by Docker engine
+.dockerignore

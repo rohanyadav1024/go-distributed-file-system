@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
+	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
@@ -244,6 +245,13 @@ func (s *nodeServer) Heartbeat(
 	// Upsert node: register new or update existing
 	if err := s.registry.Heartbeat(ctx, nodeID, address, capacityBytes, availableBytes); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register or update node: %v", err)
+	}
+
+	metrics.IncHeartbeats()
+
+	healthyNodes, err := s.registry.ListHealthyNodes(ctx)
+	if err == nil {
+		metrics.SetHealthyNodes(len(healthyNodes))
 	}
 
 	return &nodepb.HeartbeatResponse{}, nil

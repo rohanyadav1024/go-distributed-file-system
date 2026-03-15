@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
 )
 
@@ -145,5 +146,10 @@ func (m *Manager) monitorOnce(ctx context.Context) {
 		if !stale && node.Status == "down" {
 			_ = m.store.UpdateNodeStatus(ctx, node.NodeID, "healthy")
 		}
+	}
+
+	healthyNodes, err := m.store.ListHealthyNodes(ctx)
+	if err == nil {
+		metrics.SetHealthyNodes(len(healthyNodes))
 	}
 }

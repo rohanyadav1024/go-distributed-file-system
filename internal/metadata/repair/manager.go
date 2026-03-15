@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
-	"go.uber.org/zap"
 	nodeclient "github.com/rohanyadav1024/dfs/internal/node"
+	"go.uber.org/zap"
 )
 
 // Manager handles replication maintenance and repair logic.
@@ -59,8 +60,8 @@ func (m *Manager) StartScanner(ctx context.Context, interval time.Duration) {
 // scanOnce performs one cycle of under-replication detection.
 func (m *Manager) scanOnce(ctx context.Context) {
 	// ToDo: Optimize db calls and if possible use some mutable cache to track changes instead of scanning everything every time.
-	// List all chunks in the system
-	chunks, err := m.store.ListAllChunks(ctx)
+	// List only committed chunks in the system
+	chunks, err := m.store.ListCommittedChunks(ctx)
 	if err != nil {
 		m.logger.Warn("failed to list chunks",
 			zap.Error(err),
@@ -115,7 +116,7 @@ func (m *Manager) scanOnce(ctx context.Context) {
 }
 
 func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []store.ChunkLocation) error {
-	
+
 	// ToDo: Optimize db calls and if possible use some mutable cache to track changes instead of scanning everything every time.
 
 	// 1. Identify healthy replicas (sources)
@@ -201,10 +202,12 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		zap.String("source_node", source.NodeID),
 		zap.String("target_node", target.NodeID),
 	)
+	metrics.IncRepairAttempts()
 
 	// 4. Call CopyChunk RPC
 	err = m.nodeClient.CopyChunk(ctx, target.Address, source.Address, chunkID)
 	if err != nil {
+		metrics.IncRepairFailures()
 		m.logger.Error("repair failed",
 			zap.String("chunk_id", chunkID),
 			zap.Error(err),
@@ -215,6 +218,7 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 	// 5. Update metadata
 	err = m.store.AddChunkLocation(ctx, chunkID, target.NodeID)
 	if err != nil {
+		metrics.IncRepairFailures()
 		m.logger.Error("failed to update metadata after repair",
 			zap.String("chunk_id", chunkID),
 			zap.Error(err),
@@ -226,6 +230,7 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		zap.String("chunk_id", chunkID),
 		zap.String("new_replica_node", target.NodeID),
 	)
+	metrics.IncRepairSuccess()
 
 	return nil
 }

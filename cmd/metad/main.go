@@ -2,29 +2,32 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"net"
-
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
+	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/placement"
 	"github.com/rohanyadav1024/dfs/internal/metadata/policy"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	"github.com/rohanyadav1024/dfs/internal/metadata/repair"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	nodeclient "github.com/rohanyadav1024/dfs/internal/node"
 
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
-
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -45,6 +48,8 @@ func main() {
 
 	log := logging.FromContext(ctx)
 	log.Info("metad starting up")
+
+	metrics.Register()
 
 	// ----------------------------
 	// Initialize metadata store
@@ -81,21 +86,15 @@ func main() {
 	// Initialize replication repair manager
 	// ----------------------------
 
-	// repairManager := repair.NewManager(metaStore, reg, cfg.ReplicationFactor, logging.L())
-	// repairManager.StartScanner(ctx, 5*time.Second)
-
-nodeClient := &nodeclient.Client{}
-
-repairManager := repair.NewManager(
-    metaStore,
-    reg,
-    cfg.ReplicationFactor,
-    logging.FromContext(ctx),
-    nodeClient,
-)
-
-// Start repair scanner
-repairManager.StartScanner(ctx, 5*time.Second)
+	nodeClient := &nodeclient.Client{}
+	repairManager := repair.NewManager(
+		metaStore,
+		reg,
+		cfg.ReplicationFactor,
+		logging.FromContext(ctx),
+		nodeClient,
+	)
+	repairManager.StartScanner(ctx, 5*time.Second)
 
 	// ----------------------------
 	// Initialize chunk size policy
@@ -112,7 +111,6 @@ repairManager.StartScanner(ctx, 5*time.Second)
 	// ----------------------------
 
 	manifestManager := manifest.NewManager(metaStore, reg, place, chunkSize)
-	registryManager := registry.NewManager(metaStore, failureTimeout)
 
 	log.Info("metad bootstrap complete")
 
@@ -135,7 +133,7 @@ repairManager.StartScanner(ctx, 5*time.Second)
 	})
 	// nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{})
 	nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
-		registry: registryManager,
+		registry: reg,
 	})
 
 	log.Info("gRPC server listening on :50051")
@@ -144,6 +142,20 @@ repairManager.StartScanner(ctx, 5*time.Second)
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatal("failed to serve gRPC", logging.WithError(err)...)
+		}
+	}()
+
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsServer := &http.Server{
+		Addr:    cfg.MetadataMetricsAddr,
+		Handler: metricsMux,
+	}
+
+	go func() {
+		log.Info("metrics server listening", zap.String("addr", cfg.MetadataMetricsAddr))
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("failed to serve metrics", logging.WithError(err)...)
 		}
 	}()
 
@@ -163,6 +175,12 @@ repairManager.StartScanner(ctx, 5*time.Second)
 
 	// Gracefully stop gRPC server (finish in-flight RPCs)
 	grpcServer.GracefulStop()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		log.Warn("failed to shutdown metrics server cleanly", logging.WithError(err)...)
+	}
 
 	// Close listener explicitly (defensive cleanup)
 	_ = lis.Close()

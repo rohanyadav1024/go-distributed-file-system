@@ -9,6 +9,7 @@ import (
 	customerrors "github.com/rohanyadav1024/dfs/internal/common/errors"
 	storagepb "github.com/rohanyadav1024/dfs/internal/protocol/storage"
 	"github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
+	storagemetrics "github.com/rohanyadav1024/dfs/internal/storage/metrics"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -55,6 +56,8 @@ func (s *storageServer) PutChunk(ctx context.Context, req *storagepb.PutChunkReq
 	if err != nil {
 		return nil, mapError(err)
 	}
+	storagemetrics.IncChunksStored()
+	storagemetrics.SetAvailableBytes(s.store.AvailableBytes())
 
 	return &storagepb.PutChunkResponse{}, nil
 }
@@ -78,6 +81,7 @@ func (s *storageServer) GetChunk(ctx context.Context, req *storagepb.GetChunkReq
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to read chunk data")
 	}
+	storagemetrics.IncChunksServed()
 
 	return &storagepb.GetChunkResponse{Data: data}, nil
 }
@@ -94,6 +98,7 @@ func (s *storageServer) DeleteChunk(ctx context.Context, req *storagepb.DeleteCh
 	if err != nil {
 		return nil, mapError(err)
 	}
+	storagemetrics.SetAvailableBytes(s.store.AvailableBytes())
 
 	return &storagepb.DeleteChunkResponse{}, nil
 }
