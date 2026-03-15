@@ -1,6 +1,10 @@
-# DFS
+# 1024-dfs
 
-DFS is a Go-based distributed file system prototype with:
+## 1024
+
+1024 is a secure, observable, self-healing distributed storage system...
+
+1024-dfs is a Go-based distributed storage prototype with:
 
 - `metad` for metadata management
 - scalable `storaged` nodes for chunk storage

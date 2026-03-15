@@ -1,4 +1,4 @@
-# DFS Phase 1
+# 1024-dfs Phase 1
 
 ## Index
 
@@ -11,7 +11,7 @@
 
 ## Description
 
-DFS is a Go-based distributed file system prototype.
+1024-dfs is a Go-based distributed storage prototype.
 
 Phase 1 is centered on two services:
 
@@ -118,7 +118,7 @@ CLI note:
 ## Project Structure
 
 ```text
-dfs/
+1024-dfs/
 ├── cmd/
 │   ├── dfsctl/
 │   ├── metad/

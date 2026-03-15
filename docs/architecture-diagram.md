@@ -1,3 +1,5 @@
+# 1024-dfs Architecture
+
 ```mermaid
 flowchart TB
     client[Client]
