@@ -1,3 +1,4 @@
+// Package registry manages storage node liveness and health state.
 package registry
 
 import (
@@ -5,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
 )
 
-// Manager handles storage node lifecycle and health logic.
-// It wraps the store layer and adds domain-level rules.
+// Manager manages storage node lifecycle and health transitions.
 type Manager struct {
 	store          store.Store
 	failureTimeout time.Duration
@@ -44,7 +45,7 @@ func (m *Manager) RegisterNode(
 		Address:        address,
 		CapacityBytes:  capacityBytes,
 		AvailableBytes: capacityBytes,
-		Status:         "healthy",
+		Status:         constants.NodeStatusHealthy,
 		LastHeartbeat:  time.Now().Unix(),
 	})
 }
@@ -89,36 +90,17 @@ func (m *Manager) IsNodeHealthy(ctx context.Context, nodeID string) (bool, error
 	return false, nil
 }
 
+// StartMonitor runs periodic health checks until the context is canceled.
 func (m *Manager) StartMonitor(ctx context.Context, interval time.Duration) {
 	go func() {
-		// Create a ticker that sends a signal on ticker.C
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
-		// Infinite loop for continuous monitoring.
-		// This loop only exits when context is cancelled.
 		for {
-			// select waits for one of multiple channel events.
-			// It blocks until one case becomes ready.
 			select {
-
-			// Case 1: Context cancellation signal.
-			// ctx.Done() is closed when:
-			//   - Application is shutting down
-			//   - Parent context times out
-			//   - Manual cancellation occurs
-			//
-			// When this happens, we exit immediately to ensure graceful shutdown.
 			case <-ctx.Done():
 				return
-
-			// Case 2: Ticker event.
-			// ticker.C receives a value every 'interval'. This triggers one round of failure detection.
 			case <-ticker.C:
-
-				// Run one failure detection cycle.
-				// This checks heartbeat timestamps
-				// and updates node statuses if needed.
 				m.monitorOnce(ctx)
 			}
 		}
@@ -139,12 +121,12 @@ func (m *Manager) monitorOnce(ctx context.Context) {
 		last := time.Unix(node.LastHeartbeat, 0)
 		stale := now.Sub(last) > m.failureTimeout
 
-		if stale && node.Status == "healthy" {
-			_ = m.store.UpdateNodeStatus(ctx, node.NodeID, "down")
+		if stale && node.Status == constants.NodeStatusHealthy {
+			_ = m.store.UpdateNodeStatus(ctx, node.NodeID, constants.NodeStatusDown)
 		}
 
-		if !stale && node.Status == "down" {
-			_ = m.store.UpdateNodeStatus(ctx, node.NodeID, "healthy")
+		if !stale && node.Status == constants.NodeStatusDown {
+			_ = m.store.UpdateNodeStatus(ctx, node.NodeID, constants.NodeStatusHealthy)
 		}
 	}
 

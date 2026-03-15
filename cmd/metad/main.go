@@ -1,3 +1,4 @@
+// Package main runs the metadata daemon process.
 package main
 
 import (
@@ -17,7 +18,8 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
-	clustermetrics "github.com/rohanyadav1024/dfs/internal/metadata"
+	"github.com/rohanyadav1024/dfs/internal/constants"
+	metadupdater "github.com/rohanyadav1024/dfs/internal/metadata"
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
 	metadmetrics "github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/placement"
@@ -36,6 +38,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// main initializes dependencies and serves metadata gRPC and metrics endpoints.
 func main() {
 	// Load configuration
 	cfg := config.Load()
@@ -55,9 +58,9 @@ func main() {
 	log := logging.FromContext(ctx)
 	log.Info("metad starting up")
 
-	jwtSecret := os.Getenv("DFS_JWT_SECRET")
+	jwtSecret := os.Getenv(constants.EnvJWTSecret)
 	if jwtSecret == "" {
-		panic("DFS_JWT_SECRET is required and cannot be empty")
+		panic(constants.EnvJWTSecret + " is required and cannot be empty")
 	}
 
 	metadmetrics.Register()
@@ -77,7 +80,7 @@ func main() {
 	}
 	defer metaStore.Close()
 
-	metricsUpdater := clustermetrics.NewMetricsUpdater(metaStore)
+	metricsUpdater := metadupdater.NewMetricsUpdater(metaStore)
 	go metricsUpdater.Start(ctx)
 
 	// ----------------------------
@@ -108,7 +111,7 @@ func main() {
 		logging.FromContext(ctx),
 		nodeClient,
 	)
-	repairManager.StartScanner(ctx, 5*time.Second)
+	repairManager.StartScanner(ctx, constants.DefaultRepairScanInterval)
 
 	// ----------------------------
 	// Initialize chunk size policy
@@ -172,7 +175,6 @@ func main() {
 	metadatapb.RegisterMetadataServiceServer(grpcServer, &metadataServer{
 		manifest: manifestManager,
 	})
-	// nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{})
 	nodepb.RegisterNodeServiceServer(grpcServer, &nodeServer{
 		registry: reg,
 	})
@@ -217,7 +219,7 @@ func main() {
 	// Gracefully stop gRPC server (finish in-flight RPCs)
 	grpcServer.GracefulStop()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), constants.DefaultNodeTimeout)
 	defer shutdownCancel()
 	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
 		log.Warn("failed to shutdown metrics server cleanly", logging.WithError(err)...)

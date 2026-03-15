@@ -11,10 +11,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/metad ./cmd/metad
 
 FROM alpine:latest
 WORKDIR /app
+RUN apk add --no-cache openssl
 
 COPY --from=builder /out/metad /usr/local/bin/metad
+COPY scripts /opt/dfs/scripts
+RUN chmod +x /opt/dfs/scripts/*.sh
 
 EXPOSE 50051
 EXPOSE 9090
 
-ENTRYPOINT ["/usr/local/bin/metad"]
+ENTRYPOINT ["/opt/dfs/scripts/docker-entrypoint-metad.sh"]

@@ -1,25 +1,22 @@
+// Package ids generates stable identifiers used across DFS services.
 package ids
 
 import (
-	"github.com/oklog/ulid/v2"
 	"crypto/rand"
 	"time"
+
+	"github.com/oklog/ulid/v2"
 )
 
-// NewRequestID generates a new unique request ID using ULID.
-// ULID is a universally unique lexicographically sortable identifier.
+// NewRequestID returns a lexicographically sortable unique request ID.
 func NewRequestID() string {
 	t := time.Now().UTC()
 
-	// Monotonic entropy source for ULID generation ensures 
-	// that IDs generated in the same millisecond are unique and ordered.
 	entropy := ulid.Monotonic(rand.Reader, 0)
 
-	// Generate a new ULID using the current timestamp and the monotonic entropy source.
 	id, err := ulid.New(ulid.Timestamp(t), entropy)
-
 	if err != nil {
-		panic("failed to generate request ID: " + err.Error()) // Handle error appropriately in production code
+		panic("failed to generate request ID: " + err.Error())
 	}
 
 	return id.String()

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	_ "modernc.org/sqlite"
 )
 
@@ -86,9 +87,7 @@ func (s *SQLiteStore) bootstrapSchema() error {
 	return nil
 }
 
-// WithTx executes fn inside a transaction.
-// If fn returns error → rollback.
-// If fn succeeds → commit.
+// WithTx runs fn inside a transaction and commits on success.
 func (s *SQLiteStore) WithTx(ctx context.Context, fn func(Store) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -164,11 +163,11 @@ func (s *SQLiteStore) ListFiles(ctx context.Context) ([]File, error) {
 
 	var files []File
 	for rows.Next() {
-		var f File
-		if err := rows.Scan(&f.FileID, &f.FileName, &f.SizeBytes, &f.Status, &f.CreatedAt); err != nil {
+		var fileRecord File
+		if err := rows.Scan(&fileRecord.FileID, &fileRecord.FileName, &fileRecord.SizeBytes, &fileRecord.Status, &fileRecord.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan file: %w", err)
 		}
-		files = append(files, f)
+		files = append(files, fileRecord)
 	}
 
 	return files, nil
@@ -204,11 +203,11 @@ func (s *SQLiteStore) GetChunksByFileID(ctx context.Context, fileID string) ([]C
 
 	var chunks []Chunk
 	for rows.Next() {
-		var c Chunk
-		if err := rows.Scan(&c.ChunkID, &c.FileID, &c.Index, &c.SizeBytes); err != nil {
+		var chunk Chunk
+		if err := rows.Scan(&chunk.ChunkID, &chunk.FileID, &chunk.Index, &chunk.SizeBytes); err != nil {
 			return nil, fmt.Errorf("failed to scan chunk: %w", err)
 		}
-		chunks = append(chunks, c)
+		chunks = append(chunks, chunk)
 	}
 
 	return chunks, nil
@@ -224,11 +223,11 @@ func (s *SQLiteStore) ListAllChunks(ctx context.Context) ([]Chunk, error) {
 
 	var chunks []Chunk
 	for rows.Next() {
-		var c Chunk
-		if err := rows.Scan(&c.ChunkID, &c.FileID, &c.Index, &c.SizeBytes); err != nil {
+		var chunk Chunk
+		if err := rows.Scan(&chunk.ChunkID, &chunk.FileID, &chunk.Index, &chunk.SizeBytes); err != nil {
 			return nil, fmt.Errorf("failed to scan chunk: %w", err)
 		}
-		chunks = append(chunks, c)
+		chunks = append(chunks, chunk)
 	}
 
 	return chunks, nil
@@ -244,11 +243,11 @@ func (s *SQLiteStore) ListCommittedChunks(ctx context.Context) ([]Chunk, error) 
 
 	var chunks []Chunk
 	for rows.Next() {
-		var c Chunk
-		if err := rows.Scan(&c.ChunkID, &c.FileID, &c.Index, &c.SizeBytes); err != nil {
+		var chunk Chunk
+		if err := rows.Scan(&chunk.ChunkID, &chunk.FileID, &chunk.Index, &chunk.SizeBytes); err != nil {
 			return nil, fmt.Errorf("failed to scan committed chunk: %w", err)
 		}
-		chunks = append(chunks, c)
+		chunks = append(chunks, chunk)
 	}
 
 	return chunks, nil
@@ -275,11 +274,11 @@ func (s *SQLiteStore) GetChunkLocations(ctx context.Context, chunkID string) ([]
 
 	var locations []ChunkLocation
 	for rows.Next() {
-		var l ChunkLocation
-		if err := rows.Scan(&l.ChunkID, &l.NodeID); err != nil {
+		var location ChunkLocation
+		if err := rows.Scan(&location.ChunkID, &location.NodeID); err != nil {
 			return nil, fmt.Errorf("failed to scan chunk location: %w", err)
 		}
-		locations = append(locations, l)
+		locations = append(locations, location)
 	}
 
 	return locations, nil
@@ -337,18 +336,18 @@ func (s *SQLiteStore) ListHealthyNodes(ctx context.Context) ([]Node, error) {
 
 	var nodes []Node
 	for rows.Next() {
-		var n Node
+		var node Node
 		if err := rows.Scan(
-			&n.NodeID,
-			&n.Address,
-			&n.CapacityBytes,
-			&n.AvailableBytes,
-			&n.Status,
-			&n.LastHeartbeat,
+			&node.NodeID,
+			&node.Address,
+			&node.CapacityBytes,
+			&node.AvailableBytes,
+			&node.Status,
+			&node.LastHeartbeat,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan node: %w", err)
 		}
-		nodes = append(nodes, n)
+		nodes = append(nodes, node)
 	}
 
 	return nodes, nil
@@ -400,6 +399,7 @@ func (s *SQLiteStore) UpdateUploadSessionStatus(ctx context.Context, sessionID s
 	return nil
 }
 
+// Close closes the underlying database connection.
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
 }
@@ -414,18 +414,18 @@ func (s *SQLiteStore) ListAllNodes(ctx context.Context) ([]Node, error) {
 
 	var nodes []Node
 	for rows.Next() {
-		var n Node
+		var node Node
 		if err := rows.Scan(
-			&n.NodeID,
-			&n.Address,
-			&n.CapacityBytes,
-			&n.AvailableBytes,
-			&n.Status,
-			&n.LastHeartbeat,
+			&node.NodeID,
+			&node.Address,
+			&node.CapacityBytes,
+			&node.AvailableBytes,
+			&node.Status,
+			&node.LastHeartbeat,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan node: %w", err)
 		}
-		nodes = append(nodes, n)
+		nodes = append(nodes, node)
 	}
 
 	return nodes, nil
@@ -525,7 +525,7 @@ func (s *SQLiteStore) UpsertNodeHeartbeat(
 			address,
 			capacityBytes,
 			availableBytes,
-			"healthy",
+			constants.NodeStatusHealthy,
 			now,
 		)
 		if err != nil {

@@ -8,25 +8,25 @@ import (
 
 type loggerKey struct{}
 
-// WithContext returns a new context with the given fields zap.Field.
+// WithContext returns a context whose logger includes the given fields.
 func WithContext(ctx context.Context, fields ...zap.Field) context.Context {
 	baseLogger := FromContext(ctx)
 	newLogger := baseLogger.With(fields...)
 	return context.WithValue(ctx, loggerKey{}, newLogger)
 }
 
-// WithRequestID is a helper function to add a request ID to the context for logging.
+// WithRequestID adds a request ID field to the context logger.
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return WithContext(ctx, zap.String("request_id", requestID))
 }
 
-// FromContext retrieves the logger from the context, if available. If not, it returns the global logger.
+// FromContext returns the logger stored in context or the global logger.
 func FromContext(ctx context.Context) *zap.Logger {
 	if ctx == nil {
-		return L() // Return the global logger if context is nil
+		return L()
 	}
 	if logger, ok := ctx.Value(loggerKey{}).(*zap.Logger); ok {
 		return logger
 	}
-	return L() // Return the global logger if no logger is found in context
+	return L()
 }

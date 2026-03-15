@@ -1,3 +1,4 @@
+// Package manifest orchestrates metadata operations for file lifecycle events.
 package manifest
 
 import (
@@ -6,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	"github.com/rohanyadav1024/dfs/internal/metadata/placement"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
@@ -34,9 +36,7 @@ func NewManager(
 	}
 }
 
-// PrepareUpload creates a pending file record, upload session,
-// chunk records, and returns replica placements for the client to upload to.
-// It does not modify node or chunk location metadata - that is done in CommitUpload.
+// PrepareUpload creates upload metadata and returns initial chunk placements.
 func (m *Manager) PrepareUpload(
 	ctx context.Context,
 	fileName string,
@@ -72,26 +72,26 @@ func (m *Manager) PrepareUpload(
 		})
 	}
 
-	// 🔹 1. Fetch healthy nodes
+	// Fetch healthy nodes.
 	nodes, err := m.registry.ListHealthyNodes(ctx)
 	if err != nil {
 		return "", nil, err
 	}
 
-	// 🔹 2. Run placement
+	// Run placement.
 	replicaMap, err := m.placement.SelectReplicas(ctx, chunks, nodes)
 	if err != nil {
 		return "", nil, err
 	}
 
-	// 🔹 3. Store metadata atomically
+	// Store metadata atomically.
 	err = m.store.WithTx(ctx, func(tx store.Store) error {
 
 		if err := tx.CreateFile(ctx, store.File{
 			FileID:    fileID,
 			FileName:  fileName,
 			SizeBytes: fileSize,
-			Status:    "pending",
+			Status:    constants.FileStatusPending,
 			CreatedAt: time.Now().Unix(),
 		}); err != nil {
 			return err
@@ -100,7 +100,7 @@ func (m *Manager) PrepareUpload(
 		if err := tx.CreateUploadSession(ctx, store.UploadSession{
 			SessionID: sessionID,
 			FileID:    fileID,
-			Status:    "preparing",
+			Status:    constants.UploadStatusPreparing,
 			CreatedAt: time.Now().Unix(),
 		}); err != nil {
 			return err
@@ -146,7 +146,7 @@ func (m *Manager) DeleteFile(ctx context.Context, fileID string) error {
 		return fmt.Errorf("file not found")
 	}
 
-	return m.store.UpdateFileStatus(ctx, fileID, "deleted")
+	return m.store.UpdateFileStatus(ctx, fileID, constants.FileStatusDeleted)
 }
 
 // ListFiles returns all committed files.
@@ -158,21 +158,16 @@ func (m *Manager) ListFiles(ctx context.Context) ([]store.File, error) {
 
 	// Filter for committed files only
 	var committedFiles []store.File
-	for _, f := range files {
-		if f.Status == "committed" {
-			committedFiles = append(committedFiles, f)
+	for _, fileRecord := range files {
+		if fileRecord.Status == constants.FileStatusCommitted {
+			committedFiles = append(committedFiles, fileRecord)
 		}
 	}
 
 	return committedFiles, nil
 }
 
-// CommitUpload finalizes an upload session by:
-// - validating session state
-// - validating replica integrity
-// - inserting chunk replica mappings
-// - marking file as committed
-// - marking session as committed
+// CommitUpload validates replica metadata and marks the upload as committed.
 func (m *Manager) CommitUpload(
 	ctx context.Context,
 	sessionID string,
@@ -181,7 +176,7 @@ func (m *Manager) CommitUpload(
 
 	return m.store.WithTx(ctx, func(tx store.Store) error {
 
-		// 1️⃣ Load session
+		// Load session.
 		session, err := tx.GetUploadSession(ctx, sessionID)
 		if err != nil {
 			return err
@@ -191,15 +186,15 @@ func (m *Manager) CommitUpload(
 		}
 
 		// Idempotency: already committed → success
-		if session.Status == "committed" {
+		if session.Status == constants.UploadStatusCommitted {
 			return nil
 		}
 
-		if session.Status != "preparing" {
+		if session.Status != constants.UploadStatusPreparing {
 			return fmt.Errorf("invalid session state: %s", session.Status)
 		}
 
-		// 2️⃣ Load file
+		// Load file.
 		file, err := tx.GetFile(ctx, session.FileID)
 		if err != nil {
 			return err
@@ -208,15 +203,15 @@ func (m *Manager) CommitUpload(
 			return fmt.Errorf("file not found for session")
 		}
 
-		if file.Status == "committed" {
+		if file.Status == constants.FileStatusCommitted {
 			return nil
 		}
 
-		if file.Status != "pending" {
+		if file.Status != constants.FileStatusPending {
 			return fmt.Errorf("file is not in pending state")
 		}
 
-		// 3️⃣ Load chunks for this file
+		// Load chunks for this file.
 		chunks, err := tx.GetChunksByFileID(ctx, file.FileID)
 		if err != nil {
 			return err
@@ -227,7 +222,7 @@ func (m *Manager) CommitUpload(
 
 		expectedChunkCount := len(chunks)
 
-		// 4️⃣ Validate replicaMap coverage
+		// Validate replica map coverage.
 		if len(replicaMap) != expectedChunkCount {
 			return fmt.Errorf("replica map incomplete: expected %d chunks, got %d",
 				expectedChunkCount, len(replicaMap))
@@ -235,7 +230,7 @@ func (m *Manager) CommitUpload(
 
 		replicationFactor := m.placement.ReplicationFactor()
 
-		// 5️⃣ Validate each chunk
+		// Validate each chunk.
 		validChunkIDs := make(map[string]struct{}, expectedChunkCount)
 		for _, c := range chunks {
 			validChunkIDs[c.ChunkID] = struct{}{}
@@ -267,18 +262,18 @@ func (m *Manager) CommitUpload(
 			}
 		}
 
-		// 6️⃣ Insert replica mappings
+		// Insert replica mappings.
 		if err := tx.InsertChunkLocations(ctx, locations); err != nil {
 			return err
 		}
 
-		// 7️⃣ Mark file committed
-		if err := tx.UpdateFileStatus(ctx, file.FileID, "committed"); err != nil {
+		// Mark file committed.
+		if err := tx.UpdateFileStatus(ctx, file.FileID, constants.FileStatusCommitted); err != nil {
 			return err
 		}
 
-		// 8️⃣ Mark session committed
-		if err := tx.UpdateUploadSessionStatus(ctx, sessionID, "committed"); err != nil {
+		// Mark session committed.
+		if err := tx.UpdateUploadSessionStatus(ctx, sessionID, constants.UploadStatusCommitted); err != nil {
 			return err
 		}
 

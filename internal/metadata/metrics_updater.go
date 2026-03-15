@@ -1,23 +1,28 @@
+// Package metadata provides metadata-service helpers shared at process startup.
 package metadata
 
 import (
 	"context"
 	"time"
 
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
 	servermetrics "github.com/rohanyadav1024/dfs/internal/metrics"
 )
 
+// MetricsUpdater periodically refreshes cluster-level metadata metrics.
 type MetricsUpdater struct {
 	store *store.SQLiteStore
 }
 
+// NewMetricsUpdater builds a periodic updater for cluster gauge metrics.
 func NewMetricsUpdater(store *store.SQLiteStore) *MetricsUpdater {
 	return &MetricsUpdater{store: store}
 }
 
+// Start polls metadata counters and updates Prometheus gauges until context ends.
 func (m *MetricsUpdater) Start(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(constants.DefaultMetricsPollInterval)
 	defer ticker.Stop()
 
 	update := func() {

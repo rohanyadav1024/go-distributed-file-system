@@ -1,3 +1,4 @@
+// Package node provides RPC clients for storage-node coordination.
 package node
 
 import (
@@ -14,11 +15,11 @@ import (
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 )
 
-// Client is a gRPC client for communicating with storage nodes
+// Client is a gRPC client for communicating with storage nodes.
 type Client struct {
 }
 
-// CopyChunk requests a target node to copy a chunk from a source node
+// CopyChunk asks a target node to copy a chunk from a source node.
 func (c *Client) CopyChunk(ctx context.Context, targetAddr string, sourceAddr string, chunkID string) error {
 	targetHost, _, err := net.SplitHostPort(targetAddr)
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package logging configures zap loggers and context-based fields.
 package logging
 
 import (
@@ -16,7 +17,7 @@ func Init(cfg Config) error {
 	} else {
 		zapConfig = zap.NewDevelopmentConfig()
 	}
-	
+
 	level := strings.ToLower(cfg.Level)
 	switch level {
 	case "debug":

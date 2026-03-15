@@ -3,7 +3,7 @@ name: dfs
 services:
   metad:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.metad
     environment:
       DFS_REPLICATION_FACTOR: ${DFS_REPLICATION_FACTOR:-3}
@@ -15,14 +15,14 @@ services:
       - "9090:9090"
     volumes:
       - metad_db:/var/lib/dfs
-      - ./certs/ca:/ca:ro
+      - ../certs/ca:/ca:ro
     networks:
       - dfs-net
     restart: unless-stopped
 
   storaged:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.storaged
     depends_on:
       - metad
@@ -36,7 +36,7 @@ services:
       - "9091"
     volumes:
       - /var/lib/dfs/storage
-      - ./certs/ca:/ca:ro
+      - ../certs/ca:/ca:ro
     networks:
       - dfs-net
     restart: unless-stopped
@@ -46,7 +46,7 @@ services:
     ports:
       - "9092:9090"
     volumes:
-      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
       - dfs-net
     depends_on:

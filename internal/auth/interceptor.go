@@ -4,12 +4,14 @@ import (
 	"context"
 	"strings"
 
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
+// UnaryServerInterceptor validates bearer tokens on metadata service methods.
 func UnaryServerInterceptor(secret string) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -17,7 +19,7 @@ func UnaryServerInterceptor(secret string) grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		if !strings.HasPrefix(info.FullMethod, "/metadata.MetadataService/") {
+		if !strings.HasPrefix(info.FullMethod, constants.MetadataServicePrefix) {
 			return handler(ctx, req)
 		}
 

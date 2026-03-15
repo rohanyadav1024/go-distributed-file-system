@@ -11,10 +11,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/storaged ./cmd/storag
 
 FROM alpine:latest
 WORKDIR /app
+RUN apk add --no-cache openssl
 
 COPY --from=builder /out/storaged /usr/local/bin/storaged
+COPY scripts /opt/dfs/scripts
+RUN chmod +x /opt/dfs/scripts/*.sh
 
 EXPOSE 50052
 EXPOSE 9091
 
-ENTRYPOINT ["/usr/local/bin/storaged"]
+ENTRYPOINT ["/opt/dfs/scripts/docker-entrypoint-storaged.sh"]

@@ -1,11 +1,9 @@
+// Package store defines metadata persistence models and storage interfaces.
 package store
 
 import "context"
 
-// ============================
-// Domain Models
-// ============================
-
+// File represents a file metadata record.
 type File struct {
 	FileID    string
 	FileName  string
@@ -14,6 +12,7 @@ type File struct {
 	CreatedAt int64  // unix timestamp
 }
 
+// Chunk represents one file chunk metadata record.
 type Chunk struct {
 	ChunkID   string
 	FileID    string
@@ -21,11 +20,13 @@ type Chunk struct {
 	SizeBytes int64
 }
 
+// ChunkLocation maps a chunk to a storage node replica.
 type ChunkLocation struct {
 	ChunkID string
 	NodeID  string
 }
 
+// Node represents one registered storage node.
 type Node struct {
 	NodeID         string
 	Address        string
@@ -35,6 +36,7 @@ type Node struct {
 	LastHeartbeat  int64  // unix timestamp
 }
 
+// UploadSession tracks the lifecycle state of an upload.
 type UploadSession struct {
 	SessionID string
 	FileID    string
@@ -42,10 +44,7 @@ type UploadSession struct {
 	CreatedAt int64
 }
 
-// ============================
-// Store Interface
-// ============================
-
+// Store defines metadata persistence operations used by the control plane.
 type Store interface {
 
 	// -------- File operations --------

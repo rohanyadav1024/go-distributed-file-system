@@ -1,36 +1,38 @@
+// Package metrics defines Prometheus metrics emitted by the metadata service.
 package metrics
 
 import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rohanyadav1024/dfs/internal/constants"
 )
 
 var (
 	registerOnce sync.Once
 
 	heartbeatsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "dfs_heartbeats_total",
+		Name: constants.MetricNameHeartbeatsTotal,
 		Help: "Total number of node heartbeats received by metad.",
 	})
 
 	repairAttemptsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "dfs_repair_attempts_total",
+		Name: constants.MetricNameRepairAttempts,
 		Help: "Total number of repair attempts started by metad.",
 	})
 
 	repairFailuresTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "dfs_repair_failures_total",
+		Name: constants.MetricNameRepairFailures,
 		Help: "Total number of failed repair attempts.",
 	})
 
 	repairSuccessTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "dfs_repair_success_total",
+		Name: constants.MetricNameRepairSuccess,
 		Help: "Total number of successful repair attempts.",
 	})
 
 	healthyNodes = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "dfs_healthy_nodes",
+		Name: constants.MetricNameMetadataHealthy,
 		Help: "Current number of healthy storage nodes.",
 	})
 )
@@ -48,22 +50,27 @@ func Register() {
 	})
 }
 
+// IncHeartbeats increments the heartbeat counter.
 func IncHeartbeats() {
 	heartbeatsTotal.Inc()
 }
 
+// IncRepairAttempts increments the repair-attempt counter.
 func IncRepairAttempts() {
 	repairAttemptsTotal.Inc()
 }
 
+// IncRepairFailures increments the repair-failure counter.
 func IncRepairFailures() {
 	repairFailuresTotal.Inc()
 }
 
+// IncRepairSuccess increments the successful-repair counter.
 func IncRepairSuccess() {
 	repairSuccessTotal.Inc()
 }
 
+// SetHealthyNodes updates the current healthy-node gauge.
 func SetHealthyNodes(n int) {
 	healthyNodes.Set(float64(n))
 }

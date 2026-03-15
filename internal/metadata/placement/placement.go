@@ -1,3 +1,4 @@
+// Package placement assigns chunk replicas to healthy storage nodes.
 package placement
 
 import (

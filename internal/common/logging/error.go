@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// WithError converts an error into structured logging fields.
 func WithError(err error) []zap.Field {
 	if err == nil {
 		return nil

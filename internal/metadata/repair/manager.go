@@ -1,3 +1,4 @@
+// Package repair detects and heals under-replicated chunks.
 package repair
 
 import (
@@ -59,8 +60,6 @@ func (m *Manager) StartScanner(ctx context.Context, interval time.Duration) {
 
 // scanOnce performs one cycle of under-replication detection.
 func (m *Manager) scanOnce(ctx context.Context) {
-	// ToDo: Optimize db calls and if possible use some mutable cache to track changes instead of scanning everything every time.
-	// List only committed chunks in the system
 	chunks, err := m.store.ListCommittedChunks(ctx)
 	if err != nil {
 		m.logger.Warn("failed to list chunks",
@@ -84,7 +83,7 @@ func (m *Manager) scanOnce(ctx context.Context) {
 		// Count healthy replicas
 		healthyCount := 0
 		for _, loc := range locations {
-			healthy, err := m.registry.IsNodeHealthy(ctx, loc.NodeID)
+			isHealthy, err := m.registry.IsNodeHealthy(ctx, loc.NodeID)
 			if err != nil {
 				m.logger.Warn("failed to check node health",
 					zap.String("node_id", loc.NodeID),
@@ -92,7 +91,7 @@ func (m *Manager) scanOnce(ctx context.Context) {
 				)
 				continue
 			}
-			if healthy {
+			if isHealthy {
 				healthyCount++
 			}
 		}
@@ -116,10 +115,6 @@ func (m *Manager) scanOnce(ctx context.Context) {
 }
 
 func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []store.ChunkLocation) error {
-
-	// ToDo: Optimize db calls and if possible use some mutable cache to track changes instead of scanning everything every time.
-
-	// 1. Identify healthy replicas (sources)
 	type replica struct {
 		NodeID  string
 		Address string
@@ -127,7 +122,7 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 
 	var healthyReplicas []replica
 	for _, loc := range locations {
-		healthy, err := m.registry.IsNodeHealthy(ctx, loc.NodeID)
+		isHealthy, err := m.registry.IsNodeHealthy(ctx, loc.NodeID)
 		if err != nil {
 			m.logger.Warn("failed to check node health during repair",
 				zap.String("node_id", loc.NodeID),
@@ -135,7 +130,7 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 			)
 			continue
 		}
-		if healthy {
+		if isHealthy {
 			// Fetch node details from healthy node list
 			healthyNodes, err := m.registry.ListHealthyNodes(ctx)
 			if err != nil {
@@ -164,7 +159,6 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		return nil
 	}
 
-	// 2. Identify candidate target nodes (healthy nodes without this chunk)
 	healthyNodes, err := m.registry.ListHealthyNodes(ctx)
 	if err != nil {
 		m.logger.Warn("failed to list healthy nodes for repair",
@@ -173,14 +167,14 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		return err
 	}
 
-	existing := make(map[string]bool)
+	hasReplicaOnNode := make(map[string]bool)
 	for _, loc := range locations {
-		existing[loc.NodeID] = true
+		hasReplicaOnNode[loc.NodeID] = true
 	}
 
 	var targetNode *store.Node
 	for _, n := range healthyNodes {
-		if !existing[n.NodeID] {
+		if !hasReplicaOnNode[n.NodeID] {
 			targetNode = &n
 			break
 		}
@@ -193,7 +187,6 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		return nil
 	}
 
-	// 3. Choose source and target
 	source := healthyReplicas[0]
 	target := targetNode
 
@@ -204,7 +197,6 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 	)
 	metrics.IncRepairAttempts()
 
-	// 4. Call CopyChunk RPC
 	err = m.nodeClient.CopyChunk(ctx, target.Address, source.Address, chunkID)
 	if err != nil {
 		metrics.IncRepairFailures()
@@ -215,7 +207,6 @@ func (m *Manager) repairChunk(ctx context.Context, chunkID string, locations []s
 		return err
 	}
 
-	// 5. Update metadata
 	err = m.store.AddChunkLocation(ctx, chunkID, target.NodeID)
 	if err != nil {
 		metrics.IncRepairFailures()

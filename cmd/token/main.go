@@ -1,3 +1,4 @@
+// Package main prints a short-lived JWT for local testing.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/auth"
 )
 
+// main generates and prints a client token using the configured secret.
 func main() {
 	secret := os.Getenv("DFS_JWT_SECRET")
 	if secret == "" {

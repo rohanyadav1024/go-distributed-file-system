@@ -1,3 +1,4 @@
+// Package main runs the storage daemon process.
 package main
 
 import (
@@ -10,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -21,12 +21,14 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	storagepb "github.com/rohanyadav1024/dfs/internal/protocol/storage"
 	"github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
 	storagemetrics "github.com/rohanyadav1024/dfs/internal/storage/metrics"
 )
 
+// main initializes dependencies and serves storage gRPC and metrics endpoints.
 func main() {
 	// Load configuration
 	cfg := config.Load()
@@ -81,7 +83,7 @@ func main() {
 	defer metadClient.close()
 
 	// Start background heartbeat loop (every 3 seconds)
-	metadClient.startHeartbeat(ctx, logging.L(), 3*time.Second)
+	metadClient.startHeartbeat(ctx, logging.L(), constants.DefaultHeartbeatInterval)
 
 	log.Info("storaged bootstrap complete")
 
@@ -174,7 +176,7 @@ func main() {
 	// Gracefully stop gRPC server (finish in-flight RPCs)
 	grpcServer.GracefulStop()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), constants.DefaultNodeTimeout)
 	defer shutdownCancel()
 	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
 		log.Warn("failed to shutdown metrics server cleanly", logging.WithError(err)...)

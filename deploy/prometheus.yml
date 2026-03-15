@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: metad
+    static_configs:
+      - targets: ["metad:9090"]
+
+  - job_name: storaged
+    dns_sd_configs:
+      - names: ["storaged"]
+        type: A
+        port: 9091

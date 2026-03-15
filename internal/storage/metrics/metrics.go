@@ -1,3 +1,4 @@
+// Package metrics defines Prometheus metrics emitted by storage nodes.
 package metrics
 
 import (
@@ -36,14 +37,17 @@ func Register() {
 	})
 }
 
+// IncChunksStored increments the stored-chunks counter.
 func IncChunksStored() {
 	chunksStoredTotal.Inc()
 }
 
+// IncChunksServed increments the served-chunks counter.
 func IncChunksServed() {
 	chunksServedTotal.Inc()
 }
 
+// SetAvailableBytes updates the available-bytes gauge.
 func SetAvailableBytes(n int64) {
 	availableBytes.Set(float64(n))
 }

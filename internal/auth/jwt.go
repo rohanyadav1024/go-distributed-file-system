@@ -1,3 +1,4 @@
+// Package auth provides JWT utilities and gRPC auth middleware.
 package auth
 
 import (
@@ -6,11 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Claims defines DFS-specific claims carried in issued JWT tokens.
 type Claims struct {
 	Subject string `json:"sub"`
 	jwt.RegisteredClaims
 }
 
+// GenerateToken signs a JWT for the given subject with the provided TTL.
 func GenerateToken(secret string, subject string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := &Claims{
@@ -26,6 +29,7 @@ func GenerateToken(secret string, subject string, ttl time.Duration) (string, er
 	return token.SignedString([]byte(secret))
 }
 
+// ValidateToken parses and validates a JWT signed with the shared secret.
 func ValidateToken(secret string, tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(

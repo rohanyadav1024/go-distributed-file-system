@@ -1,161 +1,167 @@
 package store
 
+import (
+	"fmt"
+
+	"github.com/rohanyadav1024/dfs/internal/constants"
+)
+
 // -----------------------------
 // File Queries
 // -----------------------------
 
-const (
-	queryInsertFile = `
-INSERT INTO files (file_id, file_name, size_bytes, status, created_at)
+var (
+	queryInsertFile = fmt.Sprintf(`
+INSERT INTO %s (file_id, file_name, size_bytes, status, created_at)
 VALUES (?, ?, ?, ?, ?)
-`
+`, constants.TableFiles)
 
-	querySelectFileByID = `
+	querySelectFileByID = fmt.Sprintf(`
 SELECT file_id, file_name, size_bytes, status, created_at
-FROM files
+FROM %s
 WHERE file_id = ?
-`
+`, constants.TableFiles)
 
-	querySelectAllFiles = `
+	querySelectAllFiles = fmt.Sprintf(`
 SELECT file_id, file_name, size_bytes, status, created_at
-FROM files
+FROM %s
 ORDER BY created_at DESC
-`
+`, constants.TableFiles)
 
-	queryUpdateFileStatus = `
-UPDATE files
+	queryUpdateFileStatus = fmt.Sprintf(`
+UPDATE %s
 SET status = ?
 WHERE file_id = ?
-`
+`, constants.TableFiles)
 )
 
 // -----------------------------
 // Chunk Queries
 // -----------------------------
 
-const (
-	queryInsertChunk = `
-INSERT INTO chunks (chunk_id, file_id, chunk_index, size_bytes)
+var (
+	queryInsertChunk = fmt.Sprintf(`
+INSERT INTO %s (chunk_id, file_id, chunk_index, size_bytes)
 VALUES (?, ?, ?, ?)
-`
+`, constants.TableChunks)
 
-	querySelectChunksByFileID = `
+	querySelectChunksByFileID = fmt.Sprintf(`
 SELECT chunk_id, file_id, chunk_index, size_bytes
-FROM chunks
+FROM %s
 WHERE file_id = ?
 ORDER BY chunk_index ASC
-`
+`, constants.TableChunks)
 
-	querySelectAllChunks = `
+	querySelectAllChunks = fmt.Sprintf(`
 SELECT chunk_id, file_id, chunk_index, size_bytes
-FROM chunks
-`
+FROM %s
+`, constants.TableChunks)
 
-	querySelectCommittedChunks = `
+	querySelectCommittedChunks = fmt.Sprintf(`
 SELECT c.chunk_id, c.file_id, c.chunk_index, c.size_bytes
-FROM chunks c
-JOIN files f ON f.file_id = c.file_id
-WHERE f.status = 'committed'
-`
+FROM %s c
+JOIN %s f ON f.file_id = c.file_id
+WHERE f.status = '%s'
+`, constants.TableChunks, constants.TableFiles, constants.FileStatusCommitted)
 )
 
 // -----------------------------
 // Chunk Location Queries
 // -----------------------------
 
-const (
-	queryInsertChunkLocation = `
-INSERT INTO chunk_locations (chunk_id, node_id)
+var (
+	queryInsertChunkLocation = fmt.Sprintf(`
+INSERT INTO %s (chunk_id, node_id)
 VALUES (?, ?)
-`
+`, constants.TableChunkLocation)
 
-	querySelectChunkLocationsByChunkID = `
+	querySelectChunkLocationsByChunkID = fmt.Sprintf(`
 SELECT chunk_id, node_id
-FROM chunk_locations
+FROM %s
 WHERE chunk_id = ?
-`
+`, constants.TableChunkLocation)
 )
 
 // -----------------------------
 // Node Queries
 // -----------------------------
 
-const (
-	queryInsertNode = `
-INSERT INTO nodes (node_id, address, capacity_bytes, available_bytes, status, last_heartbeat)
+var (
+	queryInsertNode = fmt.Sprintf(`
+INSERT INTO %s (node_id, address, capacity_bytes, available_bytes, status, last_heartbeat)
 VALUES (?, ?, ?, ?, ?, ?)
-`
+`, constants.TableNodes)
 
-	queryUpdateNodeHeartbeat = `
-UPDATE nodes
+	queryUpdateNodeHeartbeat = fmt.Sprintf(`
+UPDATE %s
 SET last_heartbeat = ?
 WHERE node_id = ?
-`
+`, constants.TableNodes)
 
-	querySelectHealthyNodes = `
+	querySelectHealthyNodes = fmt.Sprintf(`
 SELECT node_id, address, capacity_bytes, available_bytes, status, last_heartbeat
-FROM nodes
-WHERE status = 'healthy'
-`
+FROM %s
+WHERE status = '%s'
+`, constants.TableNodes, constants.NodeStatusHealthy)
 
-	querySelectAllNodes = `
+	querySelectAllNodes = fmt.Sprintf(`
 SELECT node_id, address, capacity_bytes, available_bytes, status, last_heartbeat
-FROM nodes
-`
+FROM %s
+`, constants.TableNodes)
 
-	queryCountTotalNodes = `
+	queryCountTotalNodes = fmt.Sprintf(`
 SELECT COUNT(*)
-FROM nodes
-`
+FROM %s
+`, constants.TableNodes)
 
-	queryCountHealthyNodes = `
+	queryCountHealthyNodes = fmt.Sprintf(`
 SELECT COUNT(*)
-FROM nodes
-WHERE status = 'healthy'
-`
+FROM %s
+WHERE status = '%s'
+`, constants.TableNodes, constants.NodeStatusHealthy)
 
-	queryUpdateNodeStatus = `
-UPDATE nodes
+	queryUpdateNodeStatus = fmt.Sprintf(`
+UPDATE %s
 SET status = ?
 WHERE node_id = ?
-`
+`, constants.TableNodes)
 
-	queryUpsertNodeHeartbeat = `
-UPDATE nodes
-SET address = ?, capacity_bytes = ?, available_bytes = ?, last_heartbeat = ?, status = 'healthy'
+	queryUpsertNodeHeartbeat = fmt.Sprintf(`
+UPDATE %s
+SET address = ?, capacity_bytes = ?, available_bytes = ?, last_heartbeat = ?, status = '%s'
 WHERE node_id = ?
-`
+`, constants.TableNodes, constants.NodeStatusHealthy)
 )
 
 // -----------------------------
 // Upload Session Queries
 // -----------------------------
 
-const (
-	queryInsertUploadSession = `
-INSERT INTO upload_sessions (session_id, file_id, status, created_at)
+var (
+	queryInsertUploadSession = fmt.Sprintf(`
+INSERT INTO %s (session_id, file_id, status, created_at)
 VALUES (?, ?, ?, ?)
-`
+`, constants.TableUploadSession)
 
-	querySelectUploadSessionByID = `
+	querySelectUploadSessionByID = fmt.Sprintf(`
 SELECT session_id, file_id, status, created_at
-FROM upload_sessions
+FROM %s
 WHERE session_id = ?
-`
+`, constants.TableUploadSession)
 
-	queryUpdateUploadSessionStatus = `
-UPDATE upload_sessions
+	queryUpdateUploadSessionStatus = fmt.Sprintf(`
+UPDATE %s
 SET status = ?
 WHERE session_id = ?
-`
+`, constants.TableUploadSession)
 
-	queryCountTotalChunks = `
+	queryCountTotalChunks = fmt.Sprintf(`
 SELECT COUNT(*)
-FROM chunks
-`
+FROM %s
+`, constants.TableChunks)
 
-	queryCountTotalReplicas = `
+	queryCountTotalReplicas = fmt.Sprintf(`
 SELECT COUNT(*)
-FROM chunk_locations
-`
+FROM %s
+`, constants.TableChunkLocation)
 )

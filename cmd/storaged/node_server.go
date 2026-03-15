@@ -22,10 +22,12 @@ type nodeServer struct {
 	store chunkstore.Store
 }
 
-func (s *nodeServer) Heartbeat(ctx context.Context, req *nodepb.HeartbeatRequest) (*nodepb.HeartbeatResponse, error) {
+// Heartbeat implements NodeService and acknowledges liveness checks.
+func (s *nodeServer) Heartbeat(_ context.Context, _ *nodepb.HeartbeatRequest) (*nodepb.HeartbeatResponse, error) {
 	return &nodepb.HeartbeatResponse{}, nil
 }
 
+// CopyChunk pulls a chunk from a source node and stores it locally.
 func (s *nodeServer) CopyChunk(ctx context.Context, req *nodepb.CopyChunkRequest) (*nodepb.CopyChunkResponse, error) {
 
 	if req.GetChunkId() == "" {

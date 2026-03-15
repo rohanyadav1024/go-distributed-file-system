@@ -1,3 +1,4 @@
+// Package config loads runtime configuration for DFS services.
 package config
 
 import (
@@ -8,8 +9,10 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
+	"github.com/rohanyadav1024/dfs/internal/constants"
 )
 
+// Config contains service settings loaded from environment variables.
 type Config struct {
 	ServiceName string
 	Log         logging.Config
@@ -30,6 +33,7 @@ type Config struct {
 	StorageCapacityBytes int64
 }
 
+// Load reads environment variables and returns a populated Config.
 func Load() Config {
 	_ = godotenv.Load()
 
@@ -41,16 +45,16 @@ func Load() Config {
 			Production: parseBool(getEnv("LOG_PRODUCTION", "false")),
 		},
 
-		MetadataDBPath:         getEnv("DFS_METADATA_DB_PATH", "./data/metad/metad.db"),
-		MetadataAddr:           getEnv("DFS_METADATA_ADDR", ":50051"),
+		MetadataDBPath:         getEnv(constants.EnvMetadataDBPath, "./data/metad/metad.db"),
+		MetadataAddr:           getEnv(constants.EnvMetadataAddr, ":50051"),
 		MetadataMetricsAddr:    getEnv("DFS_METRICS_ADDR", ":9090"),
-		ReplicationFactor:      parseInt(getEnv("DFS_REPLICATION_FACTOR", "2")),
+		ReplicationFactor:      parseInt(getEnv(constants.EnvReplicationFactor, "2")),
 		FailureTimeoutSeconds:  parseInt(getEnv("DFS_FAILURE_TIMEOUT_SECONDS", "10")),
 		MonitorIntervalSeconds: parseInt(getEnv("DFS_MONITOR_INTERVAL_SECONDS", "3")),
 		StorageDataPath:        getEnv("DFS_STORAGE_DATA_PATH", "./data/storaged"),
-		StorageListenAddr:      getEnv("DFS_STORAGE_LISTEN_ADDR", ":50052"),
+		StorageListenAddr:      getEnv(constants.EnvStorageListenAddr, ":50052"),
 		StorageMetricsAddr:     getEnv("DFS_STORAGE_METRICS_ADDR", ":9091"),
-		StorageNodeID:          getEnv("DFS_STORAGE_NODE_ID", "storage-1"),
+		StorageNodeID:          getEnv(constants.EnvStorageNodeID, "storage-1"),
 		StorageCapacityBytes:   int64(parseInt(getEnv("DFS_STORAGE_CAPACITY_BYTES", "10737418240"))), // 10GB default
 	}
 
@@ -58,23 +62,23 @@ func Load() Config {
 }
 
 func getEnv(key string, fallback string) string {
-	val := os.Getenv(key)
-	if strings.TrimSpace(val) == "" {
+	value := os.Getenv(key)
+	if strings.TrimSpace(value) == "" {
 		return fallback
 	}
-	return val
+	return value
 }
 
-func parseBool(val string) bool {
-	b, err := strconv.ParseBool(val)
+func parseBool(value string) bool {
+	b, err := strconv.ParseBool(value)
 	if err != nil {
 		return false
 	}
 	return b
 }
 
-func parseInt(val string) int {
-	i, err := strconv.Atoi(val)
+func parseInt(value string) int {
+	i, err := strconv.Atoi(value)
 	if err != nil {
 		return 0
 	}

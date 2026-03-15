@@ -104,6 +104,6 @@ func (s *storageServer) DeleteChunk(ctx context.Context, req *storagepb.DeleteCh
 }
 
 // Health returns the health status of the storage service
-func (s *storageServer) Health(ctx context.Context, req *storagepb.HealthRequest) (*storagepb.HealthResponse, error) {
+func (s *storageServer) Health(_ context.Context, _ *storagepb.HealthRequest) (*storagepb.HealthResponse, error) {
 	return &storagepb.HealthResponse{Healthy: true}, nil
 }

@@ -1,13 +1,9 @@
 package main
 
-// This file implements the main server logic for the metadata service (metad).
-// Defines gRPC handlers for MetadataService and NodeService, and initializes the
-// necessary components like the metadata store, registry, and placement engine.
-// It defines the API calls
-
 import (
 	"context"
 
+	"github.com/rohanyadav1024/dfs/internal/constants"
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
 	"github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
@@ -29,10 +25,7 @@ type nodeServer struct {
 	registry *registry.Manager
 }
 
-// ----------------------------
-// MetadataService Methods
-// ----------------------------
-
+// PrepareUpload creates an upload session and chunk placement instructions.
 func (s *metadataServer) PrepareUpload(
 	ctx context.Context,
 	req *metadatapb.PrepareUploadRequest,
@@ -79,6 +72,7 @@ func (s *metadataServer) PrepareUpload(
 	}, nil
 }
 
+// CommitUpload finalizes a prepared upload session and persists replica metadata.
 func (s *metadataServer) CommitUpload(
 	ctx context.Context,
 	req *metadatapb.CommitUploadRequest,
@@ -108,6 +102,7 @@ func (s *metadataServer) CommitUpload(
 	return &metadatapb.CommitUploadResponse{}, nil
 }
 
+// GetFile returns committed file metadata and chunk replica plans.
 func (s *metadataServer) GetFile(
 	ctx context.Context,
 	req *metadatapb.GetFileRequest,
@@ -129,7 +124,7 @@ func (s *metadataServer) GetFile(
 	}
 
 	// Check file is committed
-	if file.Status != "committed" {
+	if file.Status != constants.FileStatusCommitted {
 		return nil, status.Error(codes.FailedPrecondition, "file is not committed")
 	}
 
@@ -177,6 +172,7 @@ func (s *metadataServer) GetFile(
 	}, nil
 }
 
+// DeleteFile marks a file as deleted in the metadata store.
 func (s *metadataServer) DeleteFile(
 	ctx context.Context,
 	req *metadatapb.DeleteFileRequest,
@@ -198,9 +194,10 @@ func (s *metadataServer) DeleteFile(
 	return &metadatapb.DeleteFileResponse{}, nil
 }
 
+// ListFiles returns summaries for all committed files.
 func (s *metadataServer) ListFiles(
 	ctx context.Context,
-	req *metadatapb.ListFilesRequest,
+	_ *metadatapb.ListFilesRequest,
 ) (*metadatapb.ListFilesResponse, error) {
 
 	// Call manifest to list all committed files
@@ -224,10 +221,7 @@ func (s *metadataServer) ListFiles(
 	}, nil
 }
 
-// ----------------------------
-// NodeService Methods
-// ----------------------------
-
+// Heartbeat records node liveness and updates cluster health metrics.
 func (s *nodeServer) Heartbeat(
 	ctx context.Context,
 	req *nodepb.HeartbeatRequest,

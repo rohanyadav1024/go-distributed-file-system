@@ -1,20 +1,21 @@
+// Package policy defines chunk sizing policy for uploaded files.
 package policy
 
 import "fmt"
 
-// ChunkSizeSlot represents a predefined chunk size with a label
+// ChunkSizeSlot describes a named chunk size option.
 type ChunkSizeSlot struct {
 	Label string
 	Bytes int64
 }
 
-// Policy determines chunk sizes based on file characteristics
+// Policy chooses chunk sizes for metadata planning.
 type Policy struct {
 	slots       []ChunkSizeSlot
 	defaultSize int64
 }
 
-// NewPolicy creates a new chunk size policy with predefined slots
+// NewPolicy returns the default chunk size policy.
 func NewPolicy() *Policy {
 	return &Policy{
 		slots: []ChunkSizeSlot{
@@ -27,30 +28,21 @@ func NewPolicy() *Policy {
 	}
 }
 
-// DetermineChunkSize determines the appropriate chunk size for a file
-// Currently returns the default size (4 MB)
-// TODO: In the future, implement logic based on fileName, fileSize, access patterns, etc.
+// DetermineChunkSize returns the chunk size to use for a file upload.
 func (p *Policy) DetermineChunkSize(fileName string, fileSize int64) (int64, error) {
 	if fileSize < 0 {
 		return 0, fmt.Errorf("invalid file size: %d", fileSize)
 	}
 
-	// For now, always return the default chunk size
-	// Future enhancements could select based on:
-	// - File extension (video files → larger chunks)
-	// - File size (very large files → larger chunks)
-	// - File type prefix conventions
-	// - Dynamic configuration per file class
-
 	return p.defaultSize, nil
 }
 
-// GetSlots returns all available chunk size slots
+// GetSlots returns all configured chunk size options.
 func (p *Policy) GetSlots() []ChunkSizeSlot {
 	return p.slots
 }
 
-// GetDefaultSize returns the default chunk size
+// GetDefaultSize returns the policy default chunk size.
 func (p *Policy) GetDefaultSize() int64 {
 	return p.defaultSize
 }

@@ -1,3 +1,4 @@
+// Package chunkstore stores immutable chunks on local disk with integrity checks.
 package chunkstore
 
 import (
@@ -19,20 +20,8 @@ const (
 	checksumSize = 32
 	lengthSize   = 8
 	headerSize   = checksumSize + lengthSize
-	// minSize      = 1          // Minimum chunk size in bytes
-	maxSize = 16 * 1024 * 1024 // Maximum chunk size in bytes (16MB)
+	maxSize      = 16 * 1024 * 1024 // Maximum chunk size in bytes (16MB)
 )
-
-// All the methods are designed to be context-aware,
-// allowing for cancellation and timeouts.
-// The Put method ensures atomic writes with embedded checksums
-// for data integrity, while Get returns a ReadCloser that
-// verifies the checksum on-the-fly during reads. Delete
-// and Exists provide basic chunk management capabilities.
-
-// All methods are implemneted considering chunk which will be
-// having a fixed size and immutable once written,
-// which is a common pattern in chunk storage systems.
 
 // Store defines the interface for a chunk storage system.
 type Store interface {
@@ -50,10 +39,9 @@ type DiskStore struct {
 	capacityBytes int64
 	usedBytes     int64
 	mu            sync.Mutex
-	// minSize int
-	// maxSize int
 }
 
+// New initializes a filesystem-backed chunk store at the configured path.
 func New(baseDir string, capacityBytes int64) (*DiskStore, error) {
 	if baseDir == "" {
 		return nil, customerrors.New(customerrors.CodeInvalidArgument, "base directory cannot be empty")
@@ -118,6 +106,7 @@ func (ds *DiskStore) Path(chunkID string) string {
 	return filepath.Join(ds.baseDir, dir, file+".chunk")
 }
 
+// Put stores a chunk atomically and enforces checksum/size validation.
 func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error {
 	select {
 	case <-ctx.Done():
@@ -137,7 +126,7 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 		return customerrors.New(customerrors.CodeInvalidArgument, "chunk size out of allowed range")
 	}
 
-	hashVal := sha256.Sum256(data)
+	checksum := sha256.Sum256(data)
 	dataLen := uint64(len(data))
 
 	// Idempotency check (header only)
@@ -149,7 +138,7 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 			existingChecksum := header[:checksumSize]
 			existingLen := binary.BigEndian.Uint64(header[checksumSize:])
 
-			if existingLen == dataLen && string(existingChecksum) == string(hashVal[:]) {
+			if existingLen == dataLen && string(existingChecksum) == string(checksum[:]) {
 				return nil // idempotent success
 			}
 		}
@@ -168,7 +157,7 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 	}
 
 	// Write checksum
-	if _, err := tempFile.Write(hashVal[:]); err != nil {
+	if _, err := tempFile.Write(checksum[:]); err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 		return customerrors.Wrap(customerrors.CodeInternal, "failed to write checksum", err)
@@ -214,6 +203,7 @@ func (ds *DiskStore) Put(ctx context.Context, chunkID string, r io.Reader) error
 	return nil
 }
 
+// Get opens a chunk stream that verifies checksum and payload length.
 func (ds *DiskStore) Get(ctx context.Context, chunkID string) (io.ReadCloser, error) {
 	select {
 	case <-ctx.Done():
@@ -221,9 +211,9 @@ func (ds *DiskStore) Get(ctx context.Context, chunkID string) (io.ReadCloser, er
 	default:
 	}
 
-	path := ds.Path(chunkID)
+	chunkPath := ds.Path(chunkID)
 
-	f, err := os.Open(path)
+	f, err := os.Open(chunkPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, customerrors.New(customerrors.CodeNotFound,
@@ -261,8 +251,7 @@ type verifiedReadCloser struct {
 	done           bool
 }
 
-// Read reads data from verifiedReadCloser files and stores in p
-// Returns number of bytes read and error if any
+// Read streams bytes and validates integrity when the stream ends.
 func (v *verifiedReadCloser) Read(p []byte) (int, error) {
 	n, err := v.file.Read(p)
 	if n > 0 {
@@ -285,15 +274,17 @@ func (v *verifiedReadCloser) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// Close closes the underlying chunk file stream.
 func (v *verifiedReadCloser) Close() error {
 	return v.file.Close()
 }
 
+// Delete removes a stored chunk if it exists.
 func (ds *DiskStore) Delete(ctx context.Context, chunkID string) error {
-	path := ds.Path(chunkID)
+	chunkPath := ds.Path(chunkID)
 
 	// Get file size before deletion
-	info, err := os.Stat(path)
+	info, err := os.Stat(chunkPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -304,7 +295,7 @@ func (ds *DiskStore) Delete(ctx context.Context, chunkID string) error {
 
 	fileSize := info.Size()
 
-	if err := os.Remove(path); err != nil {
+	if err := os.Remove(chunkPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
@@ -320,6 +311,7 @@ func (ds *DiskStore) Delete(ctx context.Context, chunkID string) error {
 	return nil
 }
 
+// Exists reports whether a chunk is present in local storage.
 func (ds *DiskStore) Exists(ctx context.Context, chunkID string) (bool, error) {
 	_, err := os.Stat(ds.Path(chunkID))
 	if err == nil {

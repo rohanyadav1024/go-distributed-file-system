@@ -23,17 +23,16 @@ coverage/
 go.work
 go.work.sum
 
-# Logs and local environment files
-*.log
+# Local environment files
 .env
 .env.*
 
-# Local data directories
-/data
+# Generated TLS artifacts
+certs/*
+!certs/.gitkeep
+!certs/README.md
 
 # OS/editor files
 .DS_Store
 .idea/
 .vscode/
-
-run.txt
