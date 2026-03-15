@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
 	"time"
 
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
@@ -9,6 +13,7 @@ import (
 	storagemetrics "github.com/rohanyadav1024/dfs/internal/storage/metrics"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // metadClient handles communication from storaged → metad
@@ -30,12 +35,32 @@ func newMetadClient(
 	metadAddr string,
 	store chunkstore.Store,
 ) (*metadClient, error) {
+	clientCert, err := tls.LoadX509KeyPair("/certs/server.crt", "/certs/server.key")
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPEM, err := os.ReadFile("/certs/ca.crt")
+	if err != nil {
+		return nil, err
+	}
+
+	caPool := x509.NewCertPool()
+	if ok := caPool.AppendCertsFromPEM(caCertPEM); !ok {
+		return nil, fmt.Errorf("failed to append CA certificate to pool")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      caPool,
+		ServerName:   "metad",
+	}
 
 	conn, err := grpc.DialContext(
 		ctx,
 		metadAddr,
-		grpc.WithInsecure(), // Phase I: no TLS
-		grpc.WithBlock(),    // Wait until connection is ready
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+		grpc.WithBlock(), // Wait until connection is ready
 	)
 	if err != nil {
 		return nil, err

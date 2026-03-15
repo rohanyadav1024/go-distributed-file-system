@@ -6,11 +6,15 @@ services:
     environment:
       DFS_REPLICATION_FACTOR: "3"
       DFS_METADATA_DB_PATH: /var/lib/dfs/metad.db
+      DFS_JWT_SECRET: "supersecretkey"
     ports:
       - "50051:50051"
       - "9090:9090"
     volumes:
       - metad_db:/var/lib/dfs
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro
+      - ./certs/metad/server.crt:/certs/server.crt:ro
+      - ./certs/metad/server.key:/certs/server.key:ro
     networks:
       - dfs-net
 
@@ -31,6 +35,9 @@ services:
       - "9101:9091"
     volumes:
       - storaged1_data:/var/lib/dfs/storage
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro
+      - ./certs/storaged1/server.crt:/certs/server.crt:ro
+      - ./certs/storaged1/server.key:/certs/server.key:ro
     networks:
       - dfs-net
 
@@ -51,6 +58,9 @@ services:
       - "9102:9091"
     volumes:
       - storaged2_data:/var/lib/dfs/storage
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro
+      - ./certs/storaged2/server.crt:/certs/server.crt:ro
+      - ./certs/storaged2/server.key:/certs/server.key:ro
     networks:
       - dfs-net
 
@@ -71,8 +81,26 @@ services:
       - "9103:9091"
     volumes:
       - storaged3_data:/var/lib/dfs/storage
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro
+      - ./certs/storaged3/server.crt:/certs/server.crt:ro
+      - ./certs/storaged3/server.key:/certs/server.key:ro
     networks:
       - dfs-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dfs-prometheus
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - dfs-net
+    depends_on:
+      - metad
+      - storaged1
+      - storaged2
+      - storaged3
 
 networks:
   dfs-net:

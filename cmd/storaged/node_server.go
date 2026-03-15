@@ -3,12 +3,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"net"
+	"os"
 
 	nodepb "github.com/rohanyadav1024/dfs/internal/protocol/node"
 	storagepb "github.com/rohanyadav1024/dfs/internal/protocol/storage"
 	"github.com/rohanyadav1024/dfs/internal/storage/chunkstore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -30,7 +35,37 @@ func (s *nodeServer) CopyChunk(ctx context.Context, req *nodepb.CopyChunkRequest
 		return nil, status.Error(codes.InvalidArgument, "source_address cannot be empty")
 	}
 
-	conn, err := grpc.DialContext(ctx, req.GetSourceAddress(), grpc.WithInsecure())
+	sourceHost, _, err := net.SplitHostPort(req.GetSourceAddress())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid source_address format: %v", err)
+	}
+
+	clientCert, err := tls.LoadX509KeyPair("/certs/server.crt", "/certs/server.key")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to load client certificate/key: %v", err)
+	}
+
+	caCertPEM, err := os.ReadFile("/certs/ca.crt")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read CA certificate: %v", err)
+	}
+
+	caPool := x509.NewCertPool()
+	if ok := caPool.AppendCertsFromPEM(caCertPEM); !ok {
+		return nil, status.Error(codes.Internal, "failed to append CA certificate to pool")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      caPool,
+		ServerName:   sourceHost,
+	}
+
+	conn, err := grpc.DialContext(
+		ctx,
+		req.GetSourceAddress(),
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+	)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "failed to connect to source node: %v", err)
 	}

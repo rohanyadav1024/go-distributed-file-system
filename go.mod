@@ -3,6 +3,7 @@ module github.com/rohanyadav1024/dfs
 go 1.24.5
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/joho/godotenv v1.5.1
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/prometheus/client_golang v1.23.2

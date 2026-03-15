@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/rohanyadav1024/dfs/internal/common/config"
@@ -91,7 +94,28 @@ func main() {
 		log.Fatal("failed to listen", logging.WithError(err)...)
 	}
 
-	grpcServer := grpc.NewServer()
+	serverCert, err := tls.LoadX509KeyPair("/certs/server.crt", "/certs/server.key")
+	if err != nil {
+		log.Fatal("failed to load server certificate/key", logging.WithError(err)...)
+	}
+
+	caCertPEM, err := os.ReadFile("/certs/ca.crt")
+	if err != nil {
+		log.Fatal("failed to read CA certificate", logging.WithError(err)...)
+	}
+
+	caPool := x509.NewCertPool()
+	if ok := caPool.AppendCertsFromPEM(caCertPEM); !ok {
+		log.Fatal("failed to append CA certificate to pool")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientCAs:    caPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+
+	grpcServer := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
 
 	// Register gRPC services and reflection for debugging
 	reflection.Register(grpcServer)
