@@ -70,6 +70,10 @@ type Store interface {
 	UpdateNodeHeartbeat(ctx context.Context, nodeID string, ts int64) error
 	ListHealthyNodes(ctx context.Context) ([]Node, error)
 	ListAllNodes(ctx context.Context) ([]Node, error)
+	CountTotalNodes(ctx context.Context) (int, error)
+	CountHealthyNodes(ctx context.Context) (int, error)
+	CountTotalChunks(ctx context.Context) (int, error)
+	CountTotalReplicas(ctx context.Context) (int, error)
 	UpdateNodeStatus(ctx context.Context, nodeID string, status string) error
 	UpsertNodeHeartbeat(ctx context.Context, nodeID string, address string, capacityBytes int64, availableBytes int64) error
 

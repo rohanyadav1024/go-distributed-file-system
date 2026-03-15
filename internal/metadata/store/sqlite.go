@@ -431,6 +431,46 @@ func (s *SQLiteStore) ListAllNodes(ctx context.Context) ([]Node, error) {
 	return nodes, nil
 }
 
+// CountTotalNodes returns total registered nodes.
+func (s *SQLiteStore) CountTotalNodes(ctx context.Context) (int, error) {
+	row := s.exec.QueryRowContext(ctx, queryCountTotalNodes)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count total nodes: %w", err)
+	}
+	return count, nil
+}
+
+// CountHealthyNodes returns healthy nodes using the same logic as ListHealthyNodes.
+func (s *SQLiteStore) CountHealthyNodes(ctx context.Context) (int, error) {
+	row := s.exec.QueryRowContext(ctx, queryCountHealthyNodes)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count healthy nodes: %w", err)
+	}
+	return count, nil
+}
+
+// CountTotalChunks returns total metadata chunks.
+func (s *SQLiteStore) CountTotalChunks(ctx context.Context) (int, error) {
+	row := s.exec.QueryRowContext(ctx, queryCountTotalChunks)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count total chunks: %w", err)
+	}
+	return count, nil
+}
+
+// CountTotalReplicas returns total chunk replica records.
+func (s *SQLiteStore) CountTotalReplicas(ctx context.Context) (int, error) {
+	row := s.exec.QueryRowContext(ctx, queryCountTotalReplicas)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count total replicas: %w", err)
+	}
+	return count, nil
+}
+
 // UpdateNodeStatus updates node health status.
 func (s *SQLiteStore) UpdateNodeStatus(
 	ctx context.Context,

@@ -25,8 +25,52 @@ var MetadataRequestDuration = prometheus.NewHistogramVec(
 	[]string{"method"},
 )
 
+var (
+	ClusterHealthyNodes = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "dfs",
+			Subsystem: "cluster",
+			Name:      "healthy_nodes",
+			Help:      "Number of healthy storage nodes.",
+		},
+	)
+
+	ClusterTotalNodes = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "dfs",
+			Subsystem: "cluster",
+			Name:      "total_nodes",
+			Help:      "Total registered storage nodes.",
+		},
+	)
+
+	ClusterTotalChunks = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "dfs",
+			Subsystem: "cluster",
+			Name:      "total_chunks",
+			Help:      "Total number of chunks in metadata.",
+		},
+	)
+
+	ClusterTotalReplicas = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "dfs",
+			Subsystem: "cluster",
+			Name:      "total_replicas",
+			Help:      "Total number of chunk replicas in metadata.",
+		},
+	)
+)
+
 func init() {
-	prometheus.MustRegister(MetadataRequestDuration)
+	prometheus.MustRegister(
+		MetadataRequestDuration,
+		ClusterHealthyNodes,
+		ClusterTotalNodes,
+		ClusterTotalChunks,
+		ClusterTotalReplicas,
+	)
 }
 
 func UnaryMetricsInterceptor() grpc.UnaryServerInterceptor {

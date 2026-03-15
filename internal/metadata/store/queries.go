@@ -103,6 +103,17 @@ SELECT node_id, address, capacity_bytes, available_bytes, status, last_heartbeat
 FROM nodes
 `
 
+	queryCountTotalNodes = `
+SELECT COUNT(*)
+FROM nodes
+`
+
+	queryCountHealthyNodes = `
+SELECT COUNT(*)
+FROM nodes
+WHERE status = 'healthy'
+`
+
 	queryUpdateNodeStatus = `
 UPDATE nodes
 SET status = ?
@@ -136,5 +147,15 @@ WHERE session_id = ?
 UPDATE upload_sessions
 SET status = ?
 WHERE session_id = ?
+`
+
+	queryCountTotalChunks = `
+SELECT COUNT(*)
+FROM chunks
+`
+
+	queryCountTotalReplicas = `
+SELECT COUNT(*)
+FROM chunk_locations
 `
 )

@@ -17,7 +17,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/common/config"
 	"github.com/rohanyadav1024/dfs/internal/common/ids"
 	"github.com/rohanyadav1024/dfs/internal/common/logging"
-	servermetrics "github.com/rohanyadav1024/dfs/internal/metrics"
+	clustermetrics "github.com/rohanyadav1024/dfs/internal/metadata"
 	"github.com/rohanyadav1024/dfs/internal/metadata/manifest"
 	metadmetrics "github.com/rohanyadav1024/dfs/internal/metadata/metrics"
 	"github.com/rohanyadav1024/dfs/internal/metadata/placement"
@@ -25,6 +25,7 @@ import (
 	"github.com/rohanyadav1024/dfs/internal/metadata/registry"
 	"github.com/rohanyadav1024/dfs/internal/metadata/repair"
 	"github.com/rohanyadav1024/dfs/internal/metadata/store"
+	servermetrics "github.com/rohanyadav1024/dfs/internal/metrics"
 	nodeclient "github.com/rohanyadav1024/dfs/internal/node"
 
 	metadatapb "github.com/rohanyadav1024/dfs/internal/protocol/metadata"
@@ -75,6 +76,9 @@ func main() {
 		log.Fatal("failed to initialize metadata store", logging.WithError(err)...)
 	}
 	defer metaStore.Close()
+
+	metricsUpdater := clustermetrics.NewMetricsUpdater(metaStore)
+	go metricsUpdater.Start(ctx)
 
 	// ----------------------------
 	// Initialize registry
